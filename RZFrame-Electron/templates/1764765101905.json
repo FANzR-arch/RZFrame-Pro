@@ -1,0 +1,33 @@
+{
+  "id": 1764765101905,
+  "name": "A",
+  "config": {
+    "template": "float",
+    "font": "Noto Serif SC",
+    "radius": 39,
+    "frameColor": "white",
+    "fontColor": "auto",
+    "fontScale": 0.7,
+    "borderScale": 0.8,
+    "logoScale": 1,
+    "logoInvert": false,
+    "layout": {
+      "padding": 40,
+      "bottomHeight": 120,
+      "left": {
+        "x": 0.05,
+        "y": 0.046594267295266854,
+        "align": "left"
+      },
+      "right": {
+        "x": 0.95,
+        "y": 0.047940930409081,
+        "align": "right"
+      }
+    },
+    "useImage": true,
+    "aspectRatio": "9:16",
+    "bgBrightness": 0.6,
+    "logoData": null
+  }
+}
