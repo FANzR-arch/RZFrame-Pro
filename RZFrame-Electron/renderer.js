@@ -119,42 +119,92 @@ function applySettingsToAll() {
 
 async function handleFileSelect(event) {
     const files = Array.from(event.target.files);
+    await processFiles(files);
+    event.target.value = ''; // Reset input
+}
+
+async function processFiles(files) {
     if (files.length === 0) return;
 
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
-        overlay.classList.remove('hidden');
-        // Force reflow
-        void overlay.offsetWidth;
-        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        // Show immediately without transition to ensure visibility
+        overlay.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+
         document.getElementById('loadPercent').innerText = '0';
+        const loadingText = document.getElementById('loadingText');
+        if (loadingText) loadingText.innerText = `Preparing to import ${files.length} files...`;
     }
 
-    let loadedCount = 0;
-    const total = files.length;
+    // Defer processing to allow UI to update (increased delay)
+    setTimeout(async () => {
+        let loadedCount = 0;
+        const total = files.length;
 
-    for (const file of files) {
-        try {
-            await processNewImage(file);
-        } catch (err) {
-            console.error("Error processing file:", file.name, err);
+        for (const file of files) {
+            try {
+                await processNewImage(file);
+            } catch (err) {
+                console.error("Error processing file:", file.name, err);
+            }
+            loadedCount++;
+            if (overlay) {
+                document.getElementById('loadPercent').innerText = Math.round((loadedCount / total) * 100);
+                const loadingText = document.getElementById('loadingText');
+                if (loadingText) loadingText.innerText = `Importing ${loadedCount}/${total}`;
+            }
+            // Small delay to allow UI update between files
+            await new Promise(r => requestAnimationFrame(() => setTimeout(r, 10)));
         }
-        loadedCount++;
-        if (overlay) document.getElementById('loadPercent').innerText = Math.round((loadedCount / total) * 100);
+
+        if (state.currentIndex === -1 && state.images.length > 0) {
+            selectImage(0);
+        } else {
+            updateFilmstrip();
+        }
+
+        if (overlay) {
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
+    }, 200);
+}
+
+function setupDragAndDrop() {
+    const body = document.body;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
 
-    if (state.currentIndex === -1 && state.images.length > 0) {
-        selectImage(0);
-    } else {
-        updateFilmstrip();
+    ['dragenter', 'dragover'].forEach(eventName => {
+        body.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        body.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        document.getElementById('emptyState')?.classList.add('border-blue-500', 'bg-blue-50/10');
     }
 
-    if (overlay) {
-        overlay.classList.add('opacity-0', 'pointer-events-none');
-        setTimeout(() => overlay.classList.add('hidden'), 300);
+    function unhighlight(e) {
+        document.getElementById('emptyState')?.classList.remove('border-blue-500', 'bg-blue-50/10');
     }
 
-    event.target.value = ''; // Reset input
+    body.addEventListener('drop', handleDrop, false);
+
+    async function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = Array.from(dt.files).filter(f => f.type.startsWith('image/'));
+        await processFiles(files);
+    }
 }
 
 
@@ -219,6 +269,7 @@ function init() {
     if (isInitialized) return;
 
     initLogger();
+    setupDragAndDrop();
 
     // Attempt to get canvas
     if (!initCanvas('mainCanvas')) {

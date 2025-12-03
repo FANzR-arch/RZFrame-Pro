@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="antialiased">
+<head>
+    <meta charset="UTF-8">
+    <!-- 移除 CSP 限制以允许加载本地图片和脚本 -->
+    <!-- <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' blob: data:;"> -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RZFrame Workstation Pro</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: "var(--border-color)",
+                        input: "var(--input-bg)",
+                        ring: "var(--ring-color)",
+                        background: "var(--bg-color)",
+                        foreground: "var(--text-main)",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=Cinzel:wght@700&family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+
+    <style>
+        /* === RZFrame x Glassmorphism 视觉系统 v2.19 (Final Fix) === */
+        :root {
+            --bg-color: #e0e5ec;
+            --bg-gradient: radial-gradient(circle at 50% 30%, #dcecfc 0%, #e0e5ec 60%);
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --glass-border-highlight: rgba(255, 255, 255, 0.95);
+            --shadow-color-main: rgba(163, 177, 198, 0.3);
+            --shadow-color-light: rgba(255, 255, 255, 0.7);
+            --shadow-blur: 16px;
+            --shadow-offset: 6px;
+            --text-main: #2d3748;
+            --text-sub: #718096;
+            --input-bg: rgba(255, 255, 255, 0.5);
+            --accent-color: #000000;
+            --slider-dot: rgba(0,0,0,0.2);
+        }
+
+        html.dark {
+            --bg-color: #1a202c;
+            --bg-gradient: radial-gradient(circle at 50% 30%, #2d3748 0%, #1a202c 60%);
+            --glass-bg: rgba(20, 25, 35, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-highlight: rgba(255, 255, 255, 0.2);
+            --shadow-color-main: rgba(0, 0, 0, 0.5);
+            --shadow-color-light: rgba(255, 255, 255, 0.01);
+            --text-main: #f7fafc;
+            --text-sub: #a0aec0;
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --accent-color: #ffffff;
+            --slider-dot: rgba(255,255,255,0.2);
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            transition: color 0.3s ease, background 0.5s ease;
+            background-color: var(--bg-color);
+            background-image: var(--bg-gradient);
+            margin: 0;
+            padding: 0;
+            user-select: none; /* 防止拖拽时选中文字 */
+        }
+
+        #bg-layer {
+            position: absolute;
+            inset: 0;
+            z-index: -2;
+            background-color: transparent;
+            transition: opacity 0.8s ease-in-out, filter 0.8s ease;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            filter: saturate(1.1) brightness(1.0);
+        }
+
+        html.dark #bg-layer {
+            filter: saturate(0.8) brightness(0.4);
+        }
+
+        #bg-blur {
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            backdrop-filter: blur(60px);
+            -webkit-backdrop-filter: blur(60px);
+            background: transparent;
+            transition: backdrop-filter 1s;
+        }
+
+        .glass-panel {
+            position: relative;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            border-top: 1px solid var(--glass-border-highlight);
+            border-left: 1px solid var(--glass-border-highlight);
+            box-shadow: var(--shadow-offset) var(--shadow-offset) var(--shadow-blur) var(--shadow-color-main), calc(var(--shadow-offset) * -0.5) calc(var(--shadow-offset) * -0.5) var(--shadow-blur) var(--shadow-color-light), inset 1px 1px 2px var(--glass-border-highlight);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+            .glass-panel.interactive:hover {
+                transform: translateY(-2px);
+                box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) calc(var(--shadow-blur) + 4px) var(--shadow-color-main), calc(var(--shadow-offset) * -0.5) calc(var(--shadow-offset) * -0.5) calc(var(--shadow-blur) + 4px) var(--shadow-color-light), inset 1px 1px 2px var(--glass-border-highlight);
+            }
+
+        .glass-input {
+            background: var(--input-bg);
+            border-radius: 12px;
+            border: 1px solid transparent;
+            color: var(--text-main);
+            transition: all 0.2s;
+            font-weight: 500;
+            font-size: 12px;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.05), inset -2px -2px 5px rgba(255, 255, 255, 0.5);
+        }
+
+        html.dark .glass-input {
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .glass-input:focus {
+            outline: none;
+            background: var(--glass-bg);
+            box-shadow: 0 0 0 2px var(--glass-border-highlight);
+        }
+
+        .tpl-btn {
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+            .tpl-btn.active {
+                border-color: var(--text-main);
+                background: var(--glass-bg);
+                box-shadow: 0 4px 12px var(--shadow-color-main);
+            }
+
+        input[type=range].dotted-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+            input[type=range].dotted-slider:focus {
+                outline: none;
+            }
+
+            input[type=range].dotted-slider::-webkit-slider-runnable-track {
+                width: 100%;
+                height: 6px;
+                cursor: pointer;
+                background: transparent;
+                border: none;
+                background-image: radial-gradient(circle, var(--slider-dot) 1.5px, transparent 1.5px);
+                background-size: 8px 100%;
+                background-repeat: repeat-x;
+                background-position: center;
+            }
+
+            input[type=range].dotted-slider::-webkit-slider-thumb {
+                height: 14px;
+                width: 14px;
+                border-radius: 50%;
+                background: var(--text-main);
+                cursor: pointer;
+                -webkit-appearance: none;
+                margin-top: -4px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                border: 2px solid var(--glass-bg);
+                transition: transform 0.1s;
+            }
+
+            input[type=range].dotted-slider:active::-webkit-slider-thumb {
+                transform: scale(1.2);
+            }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+
+        .auto-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            transition: scrollbar-color 0.3s;
+        }
+
+            .auto-scrollbar:hover {
+                scrollbar-color: var(--text-sub) transparent;
+            }
+
+            .auto-scrollbar::-webkit-scrollbar {
+                height: 4px;
+                width: 4px;
+                background: transparent;
+            }
+
+            .auto-scrollbar::-webkit-scrollbar-thumb {
+                background: transparent;
+                border-radius: 2px;
+            }
+
+            .auto-scrollbar:hover::-webkit-scrollbar-thumb {
+                background: rgba(128, 128, 128, 0.5);
+            }
+
+        .input-label {
+            font-size: 11px;
+            color: var(--text-sub);
+            font-weight: 700;
+            text-align: right;
+            padding-right: 10px;
+            white-space: nowrap;
+            letter-spacing: 0.05em;
+            opacity: 0.9;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .lang-opt {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            opacity: 0.5;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+            .lang-opt:hover {
+                opacity: 1;
+                background: rgba(0,0,0,0.05);
+            }
+
+        html.dark .lang-opt:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .lang-opt.active {
+            opacity: 1;
+            color: var(--accent-color);
+            background: var(--input-bg);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .loader-ring {
+            display: inline-block;
+            width: 48px;
+            height: 48px;
+        }
+
+            .loader-ring:after {
+                content: " ";
+                display: block;
+                width: 40px;
+                height: 40px;
+                margin: 4px;
+                border-radius: 50%;
+                border: 4px solid #fff;
+                border-color: #fff transparent #fff transparent;
+                animation: loader-ring 1.2s linear infinite;
+            }
+
+        @keyframes loader-ring {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .seg-control {
+            display: flex;
+            background: var(--input-bg);
+            padding: 4px;
+            border-radius: 10px;
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.05);
+        }
+
+        html.dark .seg-control {
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .seg-btn {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            padding: 5px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-sub);
+            font-weight: 600;
+        }
+
+            .seg-btn.active {
+                background: var(--glass-bg);
+                color: var(--text-main);
+                box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+                border: 1px solid var(--glass-border-highlight);
+            }
+
+        html.dark .seg-btn.active {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .win-ctrl-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+            color: var(--text-sub);
+            -webkit-app-region: no-drag;
+            cursor: pointer;
+        }
+
+            .win-ctrl-btn:hover {
+                background-color: rgba(0,0,0,0.05);
+                color: var(--text-main);
+            }
+
+        html.dark .win-ctrl-btn:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .win-ctrl-btn.close:hover {
+            background-color: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen box-border transition-colors duration-500 selection:bg-blue-500/30 overflow-hidden">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xl hidden transition-opacity duration-300 opacity-0">
+        <div class="loader-ring mb-4"></div>
+        <div class="text-white font-mono text-xl font-bold"><span id="loadPercent">0</span>%</div>
+        <div class="text-white/70 text-sm mt-2" data-i18n="loading">Processing...</div>
+    </div>
+
+    <div id="bg-layer"></div>
+    <div id="bg-blur"></div>
+
+    <!-- Header -->
+    <header class="h-14 shrink-0 glass-panel flex items-center justify-between px-4 z-30 mt-4 mx-4 mb-0" style="-webkit-app-region: drag;">
+        <div class="flex items-center gap-4">
+            <div class="w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-black/20 border border-white/10 flex items-center justify-center bg-zinc-900">
+                <!-- 注意：打包时请确保 LOGO.jpg 在同一目录下 -->
+                <img src="LOGO.jpg" alt="Logo" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIi8+PGNpcmNsZSBjeD0iOC41IiBjeT0iOC41IiByPSIxLjUiLz48cG9seWxpbmUgcG9pbnRzPSIyMSAxNSAxNiAxMCA1IDIxIi8+PC9zdmc+'">
+            </div>
+            <div>
+                <h1 class="font-bold text-base tracking-tight flex items-center gap-2">RZFrame</h1>
+                <p class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono font-bold tracking-widest" data-i18n="subtitle">By F.Z.R</p>
+            </div>
+        </div>
+
+        <!-- Right Controls -->
+        <div class="flex items-center gap-3" style="-webkit-app-region: no-drag;">
+            <button onclick="resetAll()" class="w-8 h-8 rounded-full hover:bg-red-500/10 text-zinc-500 hover:text-red-500 flex items-center justify-center transition group border border-transparent hover:border-red-500/20" title="Reset">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 group-hover:-rotate-180 transition-transform duration-500"></i>
+            </button>
+            <div class="h-6 w-px bg-current opacity-10"></div>
+            <div class="flex gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-lg" id="langSwitcher">
+                <span class="lang-opt active" onclick="setLanguage('en')">EN</span>
+                <span class="lang-opt" onclick="setLanguage('jp')">JP</span>
+                <span class="lang-opt" onclick="setLanguage('cn')">CN</span>
+            </div>
+            <div class="h-6 w-px bg-current opacity-10"></div>
+            <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl glass-input flex items-center justify-center transition hover:scale-105 active:scale-95" id="themeBtn">
+                <i data-lucide="moon" class="w-4 h-4"></i>
+            </button>
+
+            <div class="h-6 w-px bg-current opacity-10 ml-2"></div>
+
+            <!-- Windows Controls (Min/Max/Close) -->
+            <div class="flex items-center gap-1">
+                <button onclick="handleWindowControl('window-min')" class="win-ctrl-btn" title="Minimize">
+                    <i data-lucide="minus" class="w-4 h-4"></i>
+                </button>
+                <button onclick="handleWindowControl('window-max')" class="win-ctrl-btn" title="Maximize">
+                    <i data-lucide="square" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="handleWindowControl('window-close')" class="win-ctrl-btn close" title="Close">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="flex-1 flex gap-6 relative z-20 min-h-0 p-4 pb-6">
+
+        <!-- Left Sidebar -->
+        <aside class="w-[340px] glass-panel flex flex-col shrink-0 transition-all overflow-hidden z-20 h-full">
+            <div class="p-6 overflow-y-auto flex-1 space-y-8 no-scrollbar">
+                <!-- Style -->
+                <section>
+                    <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-4" data-i18n="templateStyle">STYLE</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="setTemplate('classic')" id="btn-classic" class="tpl-btn p-3 rounded-xl bg-white/30 dark:bg-black/20 text-center group flex flex-col items-center gap-2">
+                            <div class="w-8 h-10 bg-white border border-gray-200 shadow-sm flex items-center justify-center"><div class="w-6 h-6 bg-zinc-900"></div></div>
+                            <span class="text-xs font-bold opacity-60 group-hover:opacity-100" data-i18n="tplGallery">Gallery</span>
+                        </button>
+                        <button onclick="setTemplate('cinema')" id="btn-cinema" class="tpl-btn p-3 rounded-xl bg-white/30 dark:bg-black/20 text-center group flex flex-col items-center gap-2">
+                            <div class="w-8 h-10 bg-zinc-900 flex flex-col shadow-sm"><div class="flex-1"></div><div class="h-2 bg-white w-full"></div></div>
+                            <span class="text-xs font-bold opacity-60 group-hover:opacity-100" data-i18n="tplCinema">Cinema</span>
+                        </button>
+                        <button onclick="setTemplate('float')" id="btn-float" class="tpl-btn p-3 rounded-xl bg-white/30 dark:bg-black/20 text-center group flex flex-col items-center gap-2">
+                            <div class="w-8 h-10 flex items-center justify-center"><div class="w-6 h-8 bg-zinc-400 rounded shadow-lg"></div></div>
+                            <span class="text-xs font-bold opacity-60 group-hover:opacity-100" data-i18n="tplFloat">Float</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Parameters -->
+                <section id="styleControls" class="space-y-6">
+                    <div class="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2 mb-2">
+                        <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em]" data-i18n="styleParam">PARAMETERS</h3>
+                    </div>
+                    <div class="space-y-5">
+                        <div>
+                            <div class="flex justify-between text-xs opacity-70 mb-2 font-bold"><span data-i18n="fontScale">Font Size</span> <span id="fontScaleVal" class="font-mono">1.0x</span></div>
+                            <input type="range" id="fontScaleInput" min="0.5" max="2.0" step="0.1" value="1.0" class="dotted-slider" oninput="updateConfig('fontScale', this.value)">
+                        </div>
+                        <div id="borderControl">
+                            <div class="flex justify-between text-xs opacity-70 mb-2 font-bold"><span data-i18n="borderScale">Border Width</span> <span id="borderScaleVal" class="font-mono">1.0x</span></div>
+                            <input type="range" id="borderScaleInput" min="0" max="3.0" step="0.1" value="1.0" class="dotted-slider" oninput="updateConfig('borderScale', this.value)">
+                        </div>
+                        <div id="radiusControl" class="hidden">
+                            <div class="flex justify-between text-xs opacity-70 mb-2 font-bold"><span data-i18n="radius">Radius</span> <span id="radiusVal" class="font-mono">30px</span></div>
+                            <input type="range" id="radiusInput" min="0" max="100" value="30" class="dotted-slider" oninput="updateConfig('radius', this.value)">
+                        </div>
+                    </div>
+
+                    <div id="colorControls" class="space-y-4 pt-2">
+                        <div class="flex items-center justify-between" id="frameColorGroup">
+                            <span class="text-xs font-bold opacity-80" data-i18n="frameBg">Frame Color</span>
+                            <div class="flex gap-2 glass-input p-1">
+                                <button onclick="updateConfig('frameColor', 'white')" class="w-6 h-6 rounded bg-white border border-zinc-200 shadow-sm hover:scale-110 transition"></button>
+                                <button onclick="updateConfig('frameColor', 'black')" class="w-6 h-6 rounded bg-black border border-zinc-600 shadow-sm hover:scale-110 transition"></button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between" id="fontColorGroup">
+                            <span class="text-xs font-bold opacity-80" data-i18n="textColor">Text Color</span>
+                            <div class="flex gap-2 glass-input p-1">
+                                <button onclick="updateConfig('fontColor', 'auto')" class="text-[9px] px-2 rounded hover:bg-black/10 dark:hover:bg-white/10 transition font-bold opacity-70" data-i18n="auto">Auto</button>
+                                <button onclick="updateConfig('fontColor', 'black')" class="w-6 h-6 rounded-full bg-black border border-zinc-300 shadow-sm hover:scale-110 transition"></button>
+                                <button onclick="updateConfig('fontColor', 'white')" class="w-6 h-6 rounded-full bg-white border border-zinc-600 shadow-sm hover:scale-110 transition"></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Typography -->
+                <section>
+                    <div class="flex justify-between items-end mb-3">
+                        <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em]" data-i18n="typography">TYPOGRAPHY</h3>
+                        <button onclick="loadSystemFonts()" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition" title="Reload System Fonts">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                    <select id="fontSelector" onchange="setFont(this.value)" class="glass-input w-full p-3 text-xs mb-2 appearance-none cursor-pointer font-bold">
+                        <option value="Inter" data-i18n="fontDefault">Default (Inter)</option>
+                        <option value="Noto Serif SC" data-i18n="fontSerif">Serif (Song)</option>
+                        <option value="Roboto Mono" data-i18n="fontMono">Mono (Code)</option>
+                        <option disabled>--- System Fonts ---</option>
+                        <option value="custom" data-i18n="fontCustom">Custom Font...</option>
+                    </select>
+                    <input type="text" id="customFontInput" class="glass-input w-full p-3 text-xs hidden" placeholder="Arial, Helvetica..." oninput="setCustomFont(this.value)">
+                </section>
+
+                <!-- Metadata -->
+                <section>
+                    <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-4" data-i18n="paramEdit">METADATA</h3>
+                    <div class="space-y-3.5">
+                        <div class="grid grid-cols-[60px_1fr] gap-3 items-start">
+                            <label class="input-label mt-3" data-i18n="labelMake">Brand</label>
+                            <div class="flex flex-col gap-2">
+                                <div class="seg-control">
+                                    <div onclick="toggleBrandMode('text')" id="modeTextBtn" class="seg-btn active" data-i18n="btnText">Text</div>
+                                    <div onclick="toggleBrandMode('image')" id="modeImgBtn" class="seg-btn" data-i18n="btnLogo">Logo</div>
+                                </div>
+                                <input type="text" id="inp-make" class="glass-input w-full p-2 text-xs">
+                                <div id="brandLogoControls" class="hidden bg-black/5 dark:bg-white/5 rounded-xl p-3 border border-black/5 dark:border-white/5 space-y-3">
+                                    <div class="flex gap-3 items-center">
+                                        <div class="w-12 h-12 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNjY2MiLz48cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZWVlIi8+PHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2VlZSIvPjwvc3ZnPg==')] rounded-lg border border-black/10 flex items-center justify-center cursor-pointer hover:opacity-80 transition overflow-hidden shrink-0 shadow-inner" onclick="document.getElementById('logoInput').click()">
+                                            <img id="logoPreview" src="" class="w-full h-full object-contain p-1 hidden">
+                                            <i data-lucide="upload" class="w-5 h-5 text-zinc-500" id="logoPlaceholderIcon"></i>
+                                        </div>
+                                        <div class="flex-1 flex flex-col gap-2">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <input type="range" id="logoScaleInput" min="10" max="300" value="100" class="dotted-slider flex-1" oninput="updateLogoScale(this.value)">
+                                                <span id="scaleVal" class="text-[10px] font-mono font-bold opacity-60 w-8 text-right">100%</span>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button onclick="toggleLogoInvert()" class="text-[10px] font-bold flex-1 py-1 rounded bg-white/50 dark:bg-white/10 border border-black/5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition text-center" id="invertBtn" data-i18n="invert">Invert</button>
+                                                <button onclick="resetLogoUI()" class="text-[10px] px-2 py-1 rounded bg-white/50 dark:bg-white/10 border border-black/5 hover:text-red-500 transition"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label" data-i18n="labelModel">Model</label><input type="text" id="inp-model" class="glass-input w-full p-2 text-xs"></div>
+                        <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label" data-i18n="labelLens">Lens</label><input type="text" id="inp-lens" class="glass-input w-full p-2 text-xs"></div>
+                        <div class="grid grid-cols-2 gap-x-3 gap-y-3.5">
+                            <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label" data-i18n="labelFocal">Focal</label><input type="text" id="inp-focal" class="glass-input w-full p-2 text-xs"></div>
+                            <div class="grid grid-cols-[40px_1fr] items-center gap-3"><label class="input-label" data-i18n="labelAperture">Ap</label><input type="text" id="inp-aperture" class="glass-input w-full p-2 text-xs"></div>
+                            <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label" data-i18n="labelShutter">Time</label><input type="text" id="inp-shutter" class="glass-input w-full p-2 text-xs"></div>
+                            <div class="grid grid-cols-[40px_1fr] items-center gap-3"><label class="input-label" data-i18n="labelISO">ISO</label><input type="text" id="inp-iso" class="glass-input w-full p-2 text-xs"></div>
+                        </div>
+                        <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label" data-i18n="labelDate">Date</label><input type="text" id="inp-date" class="glass-input w-full p-2 text-xs"></div>
+                    </div>
+                </section>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col gap-6 relative min-w-0 h-full">
+            <div class="flex-1 flex items-center justify-center relative z-10 overflow-hidden">
+                <div id="emptyState" class="glass-panel p-16 flex flex-col items-center justify-center cursor-pointer hover:bg-white/30 dark:hover:bg-black/20 transition group border-2 border-dashed border-black/10 dark:border-white/10 interactive" onclick="document.getElementById('fileInput').click()">
+                    <div class="w-24 h-24 rounded-3xl bg-black/5 dark:bg-white/5 flex items-center justify-center mb-6 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 transition group-hover:scale-110 duration-300 shadow-inner">
+                        <i data-lucide="image-plus" class="w-12 h-12"></i>
+                    </div>
+                    <span class="text-base font-black opacity-60 tracking-[0.2em]" data-i18n="clickToUpload">DROP IMAGE HERE</span>
+                </div>
+                <canvas id="mainCanvas" class="max-w-full max-h-full shadow-2xl hidden cursor-move object-contain rounded-sm transition-opacity duration-300"></canvas>
+            </div>
+
+            <!-- Bottom Filmstrip -->
+            <div class="h-40 glass-panel shrink-0 z-20 flex flex-col overflow-hidden">
+                <div class="px-5 py-2.5 flex justify-between items-center bg-white/5 shrink-0 backdrop-blur-md">
+                    <div class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <i data-lucide="film" class="w-3.5 h-3.5"></i> <span data-i18n="filmstrip">GALLERY</span> (<span id="imgCount">0</span>)
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="clearFilmstrip()" class="text-[10px] font-bold text-red-500/70 hover:text-red-500 transition flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/5 hover:bg-red-500/10 border border-red-500/10" title="Clear Photos">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="document.getElementById('fileInput').click()" class="text-[10px] font-bold opacity-70 hover:opacity-100 transition flex items-center justify-center w-8 h-8 rounded-lg bg-black/5 dark:bg-white/10 border border-black/5 hover:bg-black/10 shadow-sm">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-x-auto overflow-y-hidden px-5 py-4 flex items-center gap-5 auto-scrollbar" id="thumbnailStrip">
+                    <div class="text-xs opacity-40 w-full text-center pt-6 font-bold" data-i18n="noPhotos">No photos loaded</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Sidebar -->
+        <aside class="w-[300px] flex flex-col shrink-0 gap-6 z-20 overflow-visible h-full">
+            <!-- EXIF Panel -->
+            <div class="glass-panel flex-1 p-6 overflow-y-auto no-scrollbar flex flex-col min-h-0">
+                <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-5 border-b border-black/5 dark:border-white/5 pb-3 flex items-center gap-2" data-i18n="exifInspector">
+                    <i data-lucide="info" class="w-4 h-4"></i> EXIF DATA
+                </h3>
+                <div class="space-y-5 text-xs opacity-90 font-medium">
+                    <div class="space-y-3 bg-black/5 dark:bg-white/5 p-4 rounded-xl border border-black/5 dark:border-white/5">
+                        <div class="flex justify-between items-center"><span class="opacity-50 font-bold text-[9px]" data-i18n="metaFile">FILE</span> <span id="meta-filename" class="truncate w-32 text-right font-mono">--</span></div>
+                        <div class="flex justify-between items-center"><span class="opacity-50 font-bold text-[9px]" data-i18n="metaDim">DIM</span> <span id="meta-dim" class="font-mono">--</span></div>
+                        <div class="flex justify-between items-center"><span class="opacity-50 font-bold text-[9px]" data-i18n="metaSize">SIZE</span> <span id="meta-filesize" class="font-mono">--</span></div>
+                    </div>
+                    <div class="space-y-2 px-1">
+                        <div class="flex justify-between items-center border-b border-dashed border-black/10 dark:border-white/10 pb-2"><span class="opacity-50 font-bold text-[9px]" data-i18n="metaMake">MAKE</span> <span id="meta-make" class="font-bold">--</span></div>
+                        <div class="flex justify-between items-center border-b border-dashed border-black/10 dark:border-white/10 pb-2"><span class="opacity-50 font-bold text-[9px]" data-i18n="metaModel">MODEL</span> <span id="meta-model" class="font-bold">--</span></div>
+                        <div class="flex justify-between items-start border-b border-dashed border-black/10 dark:border-white/10 pb-2"><span class="opacity-50 font-bold text-[9px] mt-0.5" data-i18n="metaLens">LENS</span> <span id="meta-lens" class="text-right w-36 break-words leading-tight">--</span></div>
+                        <div class="flex justify-between items-center border-b border-dashed border-black/10 dark:border-white/10 pb-2"><span class="opacity-50 font-bold text-[9px]" data-i18n="metaSoftware">SOFTWARE</span> <span id="meta-software" class="truncate w-24 text-right font-mono text-[9px]">--</span></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-center font-mono text-sm">
+                        <div class="bg-black/5 dark:bg-white/5 rounded-lg py-2 border border-black/5 dark:border-white/5"><div class="opacity-40 text-[9px] font-sans font-bold mb-0.5">FOCAL</div><div id="meta-focal" class="font-bold">--</div></div>
+                        <div class="bg-black/5 dark:bg-white/5 rounded-lg py-2 border border-black/5 dark:border-white/5"><div class="opacity-40 text-[9px] font-sans font-bold mb-0.5">AP</div><div id="meta-aperture" class="font-bold">--</div></div>
+                        <div class="bg-black/5 dark:bg-white/5 rounded-lg py-2 border border-black/5 dark:border-white/5"><div class="opacity-40 text-[9px] font-sans font-bold mb-0.5">SHTR</div><div id="meta-shutter" class="font-bold">--</div></div>
+                        <div class="bg-black/5 dark:bg-white/5 rounded-lg py-2 border border-black/5 dark:border-white/5"><div class="opacity-40 text-[9px] font-sans font-bold mb-0.5">ISO</div><div id="meta-iso" class="font-bold">--</div></div>
+                    </div>
+                    <div class="text-center opacity-50 text-[10px] pt-2 flex justify-between px-2 font-mono">
+                        <span id="meta-flash">--</span>
+                        <span id="meta-date">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Library Panel -->
+            <div class="glass-panel h-64 shrink-0 p-5 flex flex-col gap-4">
+                <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] border-b border-black/5 dark:border-white/5 pb-2 mb-0 flex items-center gap-2" data-i18n="tplLibrary">
+                    <i data-lucide="layout-template" class="w-4 h-4"></i> LIBRARY
+                </h3>
+                <div class="space-y-3 flex-1 flex flex-col min-h-0">
+                    <div class="flex gap-2 shrink-0">
+                        <input type="text" id="templateName" class="glass-input flex-1 p-2.5 text-xs pr-2" placeholder="Template Name...">
+                        <button onclick="saveCurrentTemplate()" class="bg-zinc-800 dark:bg-white text-white dark:text-black px-3.5 py-2 rounded-xl text-xs font-bold hover:opacity-80 transition shadow-md active:scale-95">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="overflow-y-auto space-y-1.5 no-scrollbar flex-1 pr-1" id="templateList">
+                        <div class="text-[10px] opacity-40 text-center py-6 italic font-medium" data-i18n="noSavedTpl">Empty</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Panel -->
+            <div class="glass-panel p-5 shrink-0">
+                <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] border-b border-black/5 dark:border-white/5 pb-2 mb-4 flex items-center gap-2" data-i18n="exportSettings">
+                    <i data-lucide="hard-drive" class="w-4 h-4"></i> EXPORT
+                </h3>
+                <div class="space-y-3">
+                    <div class="relative">
+                        <input type="text" id="exportFilename" class="glass-input w-full p-3 text-xs pr-12 font-bold tracking-wide" placeholder="Filename">
+                        <span class="absolute right-4 top-3 text-[10px] opacity-40 font-black">.JPG</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="downloadImage()" class="bg-zinc-800 dark:bg-white hover:bg-black dark:hover:bg-zinc-200 text-white dark:text-black py-3 rounded-xl text-xs font-black tracking-widest transition shadow-xl shadow-black/10 flex items-center justify-center gap-2 active:scale-95 transform">
+                            <i data-lucide="download" class="w-4 h-4"></i> <span data-i18n="saveImage">SAVE</span>
+                        </button>
+                        <button onclick="batchSave()" class="bg-white/50 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-black/5 dark:border-white/10 text-zinc-800 dark:text-white py-3 rounded-xl text-xs font-black tracking-widest transition shadow-sm flex items-center justify-center gap-2 active:scale-95 transform">
+                            <i data-lucide="layers" class="w-4 h-4"></i> <span>BATCH</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <input type="file" id="logoInput" accept="image/png, image/jpeg, image/svg+xml">
+
+    <script>
+        // --- 1. Electron IPC Init (修复后的版本) ---
+        let ipcRenderer;
+        let isElectron = false;
+
+        try {
+            // 检查是否有 require 方法 (Electron 环境)
+            if (typeof require !== 'undefined') {
+                const electron = require('electron');
+                ipcRenderer = electron.ipcRenderer;
+                isElectron = true;
+
+                // === 关键修改：注册 IPC 桥接函数 ===
+                // 这行代码把 HTML 中的 window.queryLocalFonts 请求转发给 Main Process
+                window.queryLocalFonts = async () => {
+                    return await ipcRenderer.invoke('query-local-fonts');
+                };
+
+                console.log('Electron environment detected. IPC bridge established.');
+            }
+        } catch (e) {
+            console.warn('Running in Browser Mode');
+        }
+
+        // --- 2. Global State ---
+        const defaultState = {
+            images: [], currentIndex: -1, theme: 'light', lang: 'en',
+            template: 'classic', logo: { img: null, scale: 1.0, invert: false, useImage: false },
+            font: 'Inter', radius: 30, frameColor: 'white', fontColor: 'auto',
+            fontScale: 1.0, borderScale: 1.0,
+            layout: { left: { x: 0.05, y: 0, align: 'left' }, right: { x: 0.95, y: 0, align: 'right' } },
+            savedTemplates: []
+        };
+
+        let state = JSON.parse(JSON.stringify(defaultState));
+        let isDragging = false; let dragTarget = null;
+        let dragStartPos = { x: 0, y: 0 };
+        let dragStartLayout = { x: 0, y: 0 };
+
+        // --- 3. Translations ---
+        const translations = {
+            cn: { loading: "正在解析...", subtitle: "By F.Z.R", templateStyle: "模版风格", tplGallery: "画廊", tplCinema: "电影", tplFloat: "悬浮", styleParam: "样式参数", fontScale: "字体大小", borderScale: "边框尺寸", radius: "悬浮圆角", frameBg: "边框背景", textColor: "文字颜色", auto: "自动", cameraLogo: "相机 LOGO", invert: "反色", scale: "缩放", typography: "字体设置", fontDefault: "默认 (Inter)", fontSerif: "衬线体 (Song)", fontMono: "等宽体 (Mono)", fontCustom: "自定义系统字体...", paramEdit: "参数设定", labelMake: "品牌", labelModel: "型号", labelLens: "镜头", labelFocal: "焦距", labelAperture: "光圈", labelShutter: "快门", labelISO: "ISO", labelDate: "日期", exportSettings: "导出", saveImage: "保存", clickToUpload: "点击或拖拽导入照片", supportedFormats: "支持 JPG / PNG / WebP / HEIC", filmstrip: "图库", add: "添加", clear: "清空", noPhotos: "暂无照片", exifInspector: "EXIF 信息", metaFile: "文件", metaSize: "大小", metaDim: "分辨率", metaMake: "厂商", metaModel: "型号", metaLens: "镜头", metaSoftware: "软件", tplLibrary: "模版库", noSavedTpl: "暂无保存的预设", tplPlaceholder: "预设名称...", filePlaceholder: "文件名 (默认自动)", btnText: "文字", btnLogo: "图片" },
+            en: { loading: "Parsing...", subtitle: "By F.Z.R", templateStyle: "STYLE", tplGallery: "Gallery", tplCinema: "Cinema", tplFloat: "Float", styleParam: "PARAMETERS", fontScale: "Font Size", borderScale: "Border", radius: "Radius", frameBg: "Frame Color", textColor: "Text Color", auto: "Auto", cameraLogo: "LOGO", invert: "Invert", scale: "Scale", typography: "TYPOGRAPHY", fontDefault: "Default", fontSerif: "Serif", fontMono: "Mono", fontCustom: "Custom...", paramEdit: "METADATA", labelMake: "Make", labelModel: "Model", labelLens: "Lens", labelFocal: "Focal", labelAperture: "Aperture", labelShutter: "Time", labelISO: "ISO", labelDate: "Date", exportSettings: "EXPORT", saveImage: "SAVE", clickToUpload: "DROP IMAGE HERE", supportedFormats: "JPG/PNG", filmstrip: "GALLERY", add: "Add", clear: "Clear", noPhotos: "No photos", exifInspector: "EXIF DATA", metaFile: "FILE", metaSize: "SIZE", metaDim: "DIM", metaMake: "MAKE", metaModel: "MODEL", metaLens: "LENS", metaSoftware: "SOFTWARE", tplLibrary: "LIBRARY", noSavedTpl: "Empty", tplPlaceholder: "Name...", filePlaceholder: "Filename", btnText: "TEXT", btnLogo: "LOGO" },
+            jp: { loading: "解析中...", subtitle: "By F.Z.R", templateStyle: "スタイル", tplGallery: "ギャラリー", tplCinema: "シネマ", tplFloat: "フロート", styleParam: "パラメータ", fontScale: "文字サイズ", borderScale: "枠線", radius: "半径", frameBg: "枠色", textColor: "文字色", auto: "自動", cameraLogo: "ロゴ", invert: "反転", scale: "サイズ", typography: "フォント", fontDefault: "標準", fontSerif: "明朝", fontMono: "等幅", fontCustom: "カスタム...", paramEdit: "メタデータ", labelMake: "メーカー", labelModel: "モデル", labelLens: "レンズ", labelFocal: "焦点距離", labelAperture: "絞り", labelShutter: "シャッター", labelISO: "ISO", labelDate: "日付", exportSettings: "保存", saveImage: "保存", clickToUpload: "画像をアップロード", supportedFormats: "JPG/PNG", filmstrip: "ギャラリー", add: "追加", clear: "クリア", noPhotos: "なし", exifInspector: "EXIF情報", metaFile: "ファイル", metaSize: "サイズ", metaDim: "解像度", metaMake: "メーカー", metaModel: "モデル", metaLens: "レンズ", metaSoftware: "ソフト", tplLibrary: "ライブラリ", noSavedTpl: "空", tplPlaceholder: "名前...", filePlaceholder: "ファイル名", btnText: "テキスト", btnLogo: "ロゴ" }
+        };
+
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // --- 4. Functions ---
+        function refreshIcons() {
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        // 修改：使用 ipcRenderer 发送窗口控制指令
+        function handleWindowControl(action) {
+            if (isElectron && ipcRenderer) {
+                ipcRenderer.send(action);
+            } else {
+                console.log('Window control action:', action, '(No Electron detected)');
+            }
+        }
+
+        async function loadSystemFonts() {
+            // 必须确保 isElectron 为真且 window.queryLocalFonts 已定义
+            if (!isElectron || !window.queryLocalFonts) {
+                // 如果不是 Electron，这里可以添加一个提示，或者什么都不做
+                // alert("System fonts are only available in the desktop app.");
+                return;
+            }
+
+            try {
+                const fonts = await window.queryLocalFonts();
+                const uniqueFonts = [...new Set(fonts.map(f => f.family))].sort();
+                const select = document.getElementById('fontSelector');
+
+                // 保留前三个默认选项
+                while (select.options.length > 3) { select.remove(3); }
+
+                const sep = document.createElement('option');
+                sep.disabled = true;
+                sep.text = "--- System Fonts ---";
+                select.add(sep);
+
+                uniqueFonts.forEach(font => {
+                    const opt = document.createElement('option');
+                    opt.value = font;
+                    opt.text = font;
+                    select.add(opt);
+                });
+
+                const customOpt = document.createElement('option');
+                customOpt.value = "custom";
+                customOpt.text = "Custom Font...";
+                customOpt.setAttribute('data-i18n', 'fontCustom');
+                select.add(customOpt);
+
+            } catch (err) {
+                console.error("Font error:", err);
+            }
+        }
+
+        async function batchSave() {
+            if (!isElectron) {
+                alert("Batch save is only available in desktop version.");
+                return;
+            }
+            if (state.images.length === 0) return;
+
+            // 调用主进程选择文件夹
+            const result = await ipcRenderer.invoke('select-folder-dialog');
+            if (!result.success) return;
+
+            const targetFolder = result.path;
+            const loader = document.getElementById('loadingOverlay');
+            const loadPercent = document.getElementById('loadPercent');
+            const originalIndex = state.currentIndex;
+
+            loader.classList.remove('hidden', 'opacity-0');
+
+            try {
+                for (let i = 0; i < state.images.length; i++) {
+                    selectImage(i);
+                    await new Promise(r => setTimeout(r, 50)); // Wait for render
+
+                    const originalName = state.images[i].file.name.split('.')[0];
+                    // 简单的路径拼接逻辑，防止反斜杠重复
+                    const sep = targetFolder.includes('/') ? '/' : '\\';
+                    const fileName = targetFolder.endsWith(sep)
+                        ? targetFolder + `${originalName}_ExifFrame.jpg`
+                        : targetFolder + sep + `${originalName}_ExifFrame.jpg`;
+
+                    const dataURL = canvas.toDataURL('image/jpeg', 0.95);
+
+                    await ipcRenderer.invoke('save-file-direct', fileName, dataURL);
+                    loadPercent.innerText = Math.round(((i + 1) / state.images.length) * 100);
+                }
+                alert("Batch save completed!");
+            } catch (err) {
+                alert("Batch save failed: " + err);
+            } finally {
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 300);
+                if (originalIndex !== -1) selectImage(originalIndex);
+            }
+        }
+
+        function deleteImage(index, event) {
+            if (event) event.stopPropagation();
+            if (!confirm("Remove this image?")) return;
+
+            state.images.splice(index, 1);
+            if (state.images.length === 0) {
+                state.currentIndex = -1;
+                clearPhotosUI();
+            } else {
+                if (state.currentIndex >= index) {
+                    state.currentIndex = Math.max(0, state.currentIndex - 1);
+                }
+                selectImage(state.currentIndex);
+            }
+        }
+
+        async function downloadImage() {
+            if (state.currentIndex === -1) return;
+            const customName = document.getElementById('exportFilename').value.trim();
+            const originalName = state.images[state.currentIndex].file.name.split('.')[0];
+            const fileName = customName ? `${customName}.jpg` : `${originalName}_ExifFrame.jpg`;
+            const dataURL = canvas.toDataURL('image/jpeg', 0.95);
+
+            if (isElectron && ipcRenderer) {
+                try {
+                    const result = await ipcRenderer.invoke('save-file-dialog', dataURL, fileName);
+                    if (result.success) showSaveFeedback();
+                } catch (err) {
+                    alert("Save failed: " + err);
+                }
+            } else {
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = dataURL;
+                link.click();
+                showSaveFeedback();
+            }
+        }
+
+        function showSaveFeedback() {
+            const btn = document.querySelector('button[onclick="downloadImage()"]');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> SAVED`;
+            btn.classList.replace('bg-zinc-800', 'bg-green-500');
+            btn.classList.replace('dark:bg-white', 'bg-green-500');
+            setTimeout(() => {
+                btn.innerHTML = originalContent;
+                btn.classList.replace('bg-green-500', 'bg-zinc-800');
+                btn.classList.replace('bg-green-500', 'dark:bg-white');
+                refreshIcons();
+            }, 2000);
+            refreshIcons();
+        }
+
+        function init() {
+            const savedTpls = localStorage.getItem('exifFrame_templates');
+            if (savedTpls) state.savedTemplates = JSON.parse(savedTpls);
+            initTemplates();
+            setTemplate('classic');
+            setLanguage('en');
+            toggleBrandMode('text');
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                state.theme = 'dark';
+                document.documentElement.classList.add('dark');
+                updateThemeIcon();
+            }
+            setTimeout(loadSystemFonts, 1000);
+            refreshIcons();
+        }
+
+        function updateConfig(key, val) { if (['radius', 'fontScale', 'borderScale'].includes(key)) state[key] = parseFloat(val); else state[key] = val; if (key === 'radius') document.getElementById('radiusVal').innerText = val + 'px'; if (key === 'fontScale') document.getElementById('fontScaleVal').innerText = parseFloat(val).toFixed(1) + 'x'; if (key === 'borderScale') document.getElementById('borderScaleVal').innerText = parseFloat(val).toFixed(1) + 'x'; render(); }
+        function setLanguage(lang) { state.lang = lang; updateLanguageUI(); }
+        function updateLanguageUI() { const t = translations[state.lang]; document.querySelectorAll('.lang-opt').forEach(el => el.classList.remove('active')); const opts = document.querySelectorAll('.lang-opt'); if (state.lang === 'en') opts[0].classList.add('active'); if (state.lang === 'jp') opts[1].classList.add('active'); if (state.lang === 'cn') opts[2].classList.add('active'); document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (t[key]) el.innerText = t[key]; }); document.getElementById('templateName').placeholder = t.tplPlaceholder; document.getElementById('exportFilename').placeholder = t.filePlaceholder; }
+        function resetAll() { if (!confirm("Reset?")) return; const s = state.savedTemplates; const th = state.theme; state = JSON.parse(JSON.stringify(defaultState)); state.savedTemplates = s; state.theme = th; clearPhotosUI(); const i = ['inp-make', 'inp-model', 'inp-lens', 'inp-focal', 'inp-aperture', 'inp-shutter', 'inp-iso', 'inp-date']; i.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; }); resetLogoUI(); setTemplate('classic'); updateConfig('fontScale', 1.0); updateConfig('borderScale', 1.0); updateConfig('radius', 30); document.getElementById('fontScaleInput').value = 1.0; document.getElementById('borderScaleInput').value = 1.0; document.getElementById('radiusInput').value = 30; toggleBrandMode('text'); updateLanguageUI(); refreshIcons(); }
+        function clearFilmstrip() { if (state.images.length === 0) return; if (!confirm("Clear all?")) return; state.images = []; state.currentIndex = -1; clearPhotosUI(); }
+        function clearPhotosUI() { document.getElementById('thumbnailStrip').innerHTML = `<div class="text-xs opacity-40 w-full text-center pt-6 font-bold" data-i18n="noPhotos">${translations[state.lang].noPhotos}</div>`; document.getElementById('imgCount').innerText = '0'; document.getElementById('emptyState').classList.remove('hidden'); const canvas = document.getElementById('mainCanvas'); canvas.classList.add('hidden'); document.getElementById('bg-layer').style.opacity = '0'; setTimeout(() => { document.getElementById('bg-layer').style.backgroundImage = 'none'; }, 800); document.querySelectorAll('[id^="meta-"]').forEach(el => el.innerText = '--'); const i = ['inp-make', 'inp-model', 'inp-lens', 'inp-focal', 'inp-aperture', 'inp-shutter', 'inp-iso', 'inp-date']; i.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; }); }
+        function toggleBrandMode(m) { state.logo.useImage = (m === 'image'); const t = document.getElementById('modeTextBtn'); const i = document.getElementById('modeImgBtn'); const ti = document.getElementById('inp-make'); const lc = document.getElementById('brandLogoControls'); if (m === 'image') { t.classList.remove('active'); i.classList.add('active'); ti.classList.add('hidden'); lc.classList.remove('hidden'); } else { i.classList.remove('active'); t.classList.add('active'); lc.classList.add('hidden'); ti.classList.remove('hidden'); } render(); }
+        document.getElementById('logoInput').addEventListener('change', (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = (ev) => { const i = new Image(); i.onload = () => { state.logo.img = i; document.getElementById('logoPreview').src = ev.target.result; document.getElementById('logoPreview').classList.remove('hidden'); document.getElementById('logoPlaceholderIcon').classList.add('hidden'); updateLogoPreviewFilter(); render(); }; i.src = ev.target.result; }; r.readAsDataURL(f); });
+        function resetLogoUI() { state.logo.img = null; state.logo.invert = false; document.getElementById('logoPreview').classList.add('hidden'); document.getElementById('logoPlaceholderIcon').classList.remove('hidden'); document.getElementById('logoInput').value = ''; }
+        function toggleLogoInvert() { state.logo.invert = !state.logo.invert; updateLogoPreviewFilter(); render(); }
+        function updateLogoScale(v) { state.logo.scale = v / 100; document.getElementById('scaleVal').innerText = v + '%'; render(); }
+        function updateLogoPreviewFilter() { const p = document.getElementById('logoPreview'); const b = document.getElementById('invertBtn'); if (state.logo.invert) { p.style.filter = 'invert(1)'; b.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black'); } else { p.style.filter = 'none'; b.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black'); } }
+        function setTemplate(t) { state.template = t;['classic', 'cinema', 'float'].forEach(id => { const b = document.getElementById(`btn-${id}`); if (id === t) b.classList.add('active'); else b.classList.remove('active'); }); const rc = document.getElementById('radiusControl'); const fc = document.getElementById('frameColorGroup'); if (t === 'float') { rc.classList.remove('hidden'); fc.classList.add('hidden'); } else { rc.classList.add('hidden'); fc.classList.remove('hidden'); } state.layout.left.y = 0; state.layout.right.y = 0; render(); }
+        function updateBackground(img) { const bg = document.getElementById('bg-layer'); if (!img) { bg.style.opacity = '0'; return; } const c = document.createElement('canvas'); c.width = 100; c.height = 100; c.getContext('2d').drawImage(img, 0, 0, 100, 100); bg.style.backgroundImage = `url(${c.toDataURL()})`; bg.style.opacity = '1'; }
+        function toggleTheme() { state.theme = state.theme === 'light' ? 'dark' : 'light'; if (state.theme === 'dark') document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); updateThemeIcon(); render(); }
+        function updateThemeIcon() { document.getElementById('themeBtn').innerHTML = state.theme === 'dark' ? '<i data-lucide="sun" class="w-4 h-4"></i>' : '<i data-lucide="moon" class="w-4 h-4"></i>'; refreshIcons(); }
+        function setFont(v) { const i = document.getElementById('customFontInput'); if (v === 'custom') { i.classList.remove('hidden'); state.font = i.value || 'Arial'; } else { i.classList.add('hidden'); state.font = v; } render(); }
+        function setCustomFont(v) { if (v) { state.font = v; render(); } }
+        document.getElementById('fileInput').addEventListener('change', async (e) => { const f = Array.from(e.target.files); if (f.length === 0) return; const l = document.getElementById('loadingOverlay'); const p = document.getElementById('loadPercent'); l.classList.remove('hidden'); setTimeout(() => l.classList.remove('opacity-0'), 10); document.getElementById('emptyState').classList.add('hidden'); canvas.classList.remove('hidden'); for (let i = 0; i < f.length; i++) { await processNewImage(f[i]); p.innerText = Math.round(((i + 1) / f.length) * 100); await new Promise(r => setTimeout(r, 50)); } l.classList.add('opacity-0'); setTimeout(() => l.classList.add('hidden'), 300); if (state.currentIndex === -1 && state.images.length > 0) selectImage(0); else if (state.images.length > 0) selectImage(state.images.length - 1); });
+        function processNewImage(file) { return new Promise((resolve) => { const reader = new FileReader(); reader.onload = (evt) => { const img = new Image(); img.onload = () => { const imgData = { file: file, imgObj: img, thumbUrl: createThumbnail(img), metaDisplay: {}, userEdit: {} }; EXIF.getData(img, function () { const tags = EXIF.getAllTags(this); imgData.metaDisplay = { filename: file.name, filesize: (file.size / 1024 / 1024).toFixed(2) + ' MB', dimensions: `${img.width} x ${img.height}`, make: (tags.Make || 'Unknown').replace(/\0/g, ''), model: (tags.Model || 'Unknown').replace(/\0/g, ''), lens: tags.LensModel || tags.Lens || '--', software: tags.Software || '--', date: tags.DateTimeOriginal || tags.DateTime || '--', focal: tags.FocalLength ? `${tags.FocalLength}mm` : '--', aperture: tags.FNumber ? `f/${tags.FNumber}` : '--', shutter: tags.ExposureTime ? (tags.ExposureTime < 1 ? `1/${Math.round(1 / tags.ExposureTime)}` : `${tags.ExposureTime}"`) : '--', iso: tags.ISOSpeedRatings || '--', flash: tags.Flash === undefined ? '--' : (tags.Flash & 1 ? 'Fired' : 'Off') }; let modelClean = imgData.metaDisplay.model; if (modelClean.includes('ILCE-7RM2')) modelClean = 'Sony A7R II'; let dateClean = imgData.metaDisplay.date.split(' ')[0].replace(/:/g, '.'); imgData.userEdit = { make: imgData.metaDisplay.make, model: modelClean, lens: imgData.metaDisplay.lens === '--' ? 'Lens Info' : imgData.metaDisplay.lens, focal: imgData.metaDisplay.focal, aperture: imgData.metaDisplay.aperture, shutter: imgData.metaDisplay.shutter, iso: imgData.metaDisplay.iso, date: dateClean }; state.images.push(imgData); resolve(); }); }; img.src = evt.target.result; }; reader.readAsDataURL(file); }); }
+        function createThumbnail(img) { const c = document.createElement('canvas'); const h = 100; const a = img.width / img.height; c.height = h; c.width = h * a; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL(); }
+        function initTemplates() { const s = localStorage.getItem('exifFrame_templates'); if (s) { state.savedTemplates = JSON.parse(s); renderTemplateList(); } }
+        function updateFilmstrip() { const s = document.getElementById('thumbnailStrip'); s.innerHTML = ''; document.getElementById('imgCount').innerText = state.images.length; state.images.forEach((d, i) => { const div = document.createElement('div'); const sel = i === state.currentIndex; div.className = `relative h-full w-auto shrink-0 cursor-pointer rounded-lg overflow-hidden transition-all duration-200 group ${sel ? 'ring-2 ring-white opacity-100 shadow-lg scale-105 z-10' : 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0'}`; div.onclick = () => selectImage(i); const delBtn = document.createElement('button'); delBtn.className = "absolute top-1 right-1 bg-red-500 text-white w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 z-20 shadow-sm"; delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`; delBtn.onclick = (e) => deleteImage(i, e); const t = document.createElement('img'); t.src = d.thumbUrl; t.className = "h-full w-auto object-contain"; div.appendChild(t); div.appendChild(delBtn); s.appendChild(div); }); refreshIcons(); }
+        function selectImage(idx) { if (state.images.length === 0) { clearPhotosUI(); return; } state.currentIndex = idx; const d = state.images[idx]; updateBackground(d.imgObj); const ids = ['make', 'model', 'lens', 'focal', 'aperture', 'shutter', 'iso', 'date']; ids.forEach(k => { const el = document.getElementById(`inp-${k}`); if (el) el.value = d.userEdit[k]; }); document.getElementById('meta-filename').innerText = d.metaDisplay.filename; document.getElementById('meta-filesize').innerText = d.metaDisplay.filesize; document.getElementById('meta-dim').innerText = d.metaDisplay.dimensions; document.getElementById('meta-make').innerText = d.metaDisplay.make; document.getElementById('meta-model').innerText = d.metaDisplay.model; document.getElementById('meta-lens').innerText = d.metaDisplay.lens; const ms = document.getElementById('meta-software'); if (ms) ms.innerText = d.metaDisplay.software; document.getElementById('meta-focal').innerText = d.metaDisplay.focal; document.getElementById('meta-aperture').innerText = d.metaDisplay.aperture; document.getElementById('meta-shutter').innerText = d.metaDisplay.shutter; document.getElementById('meta-iso').innerText = d.metaDisplay.iso; const mf = document.getElementById('meta-flash'); if (mf) mf.innerText = `Flash: ${d.metaDisplay.flash}`; const md = document.getElementById('meta-date'); if (md) md.innerText = `Date: ${d.metaDisplay.date}`; document.getElementById('exportFilename').value = ""; updateFilmstrip(); render(); }
+        const im = { 'inp-make': 'make', 'inp-model': 'model', 'inp-lens': 'lens', 'inp-focal': 'focal', 'inp-aperture': 'aperture', 'inp-shutter': 'shutter', 'inp-iso': 'iso', 'inp-date': 'date' }; Object.keys(im).forEach(id => { document.getElementById(id).addEventListener('input', (e) => { if (state.currentIndex === -1) return; state.images[state.currentIndex].userEdit[im[id]] = e.target.value; render(); }); });
+        function saveCurrentTemplate() { const n = document.getElementById('templateName').value.trim(); if (!n) return; const t = { id: Date.now(), name: n, config: { template: state.template, font: state.font, radius: state.radius, frameColor: state.frameColor, fontColor: state.fontColor, fontScale: state.fontScale, borderScale: state.borderScale, logoScale: state.logo.scale, logoInvert: state.logo.invert, layout: state.layout, useImage: state.logo.useImage } }; state.savedTemplates.push(t); localStorage.setItem('exifFrame_templates', JSON.stringify(state.savedTemplates)); document.getElementById('templateName').value = ''; renderTemplateList(); }
+        function loadTemplate(id) { const t = state.savedTemplates.find(x => x.id === id); if (!t) return; const c = t.config; state.template = c.template; state.font = c.font; state.radius = c.radius; state.frameColor = c.frameColor; state.fontColor = c.fontColor; state.fontScale = c.fontScale; state.borderScale = c.borderScale; state.logo.scale = c.logoScale; state.logo.invert = c.logoInvert; state.layout = c.layout; state.logo.useImage = c.useImage; setTemplate(state.template); updateConfig('radius', state.radius); updateConfig('fontScale', state.fontScale); updateConfig('borderScale', state.borderScale); document.getElementById('logoScaleInput').value = state.logo.scale * 100; updateLogoScale(state.logo.scale * 100); updateLogoPreviewFilter(); document.getElementById('fontSelector').value = state.font; toggleBrandMode(state.logo.useImage ? 'image' : 'text'); render(); }
+        function deleteTemplate(id, e) { e.stopPropagation(); state.savedTemplates = state.savedTemplates.filter(x => x.id !== id); localStorage.setItem('exifFrame_templates', JSON.stringify(state.savedTemplates)); renderTemplateList(); }
+        function renderTemplateList() { const c = document.getElementById('templateList'); if (state.savedTemplates.length === 0) { c.innerHTML = `<div class="text-[10px] opacity-40 text-center py-4 italic" data-i18n="noSavedTpl">${translations[state.lang].noSavedTpl}</div>`; return; } c.innerHTML = ''; state.savedTemplates.forEach(t => { const el = document.createElement('div'); el.className = "flex justify-between items-center bg-black/5 dark:bg-white/5 hover:bg-white dark:hover:bg-white/20 p-2 rounded-lg cursor-pointer group transition border border-transparent hover:border-black/10"; el.onclick = () => loadTemplate(t.id); el.innerHTML = `<span class="text-[10px] font-medium truncate opacity-80">${t.name}</span><button onclick="deleteTemplate(${t.id},event)" class="opacity-0 group-hover:opacity-100 transition hover:text-red-500"><i data-lucide="trash-2" class="w-3 h-3"></i></button>`; c.appendChild(el); }); refreshIcons(); }
+
+        function render() {
+            if (state.currentIndex === -1) return;
+            const imgData = state.images[state.currentIndex]; const img = imgData.imgObj; const edit = imgData.userEdit;
+            const w = img.width; const h = img.height;
+            let padding = 0, footerH = 0;
+            if (state.template === 'classic') { padding = Math.round(Math.max(w, h) * 0.03 * state.borderScale); footerH = Math.round(h * 0.12 * state.borderScale); if (state.borderScale < 0.1 && state.borderScale > 0) footerH = Math.round(h * 0.05); }
+            else if (state.template === 'cinema') { footerH = Math.round(h * 0.10 * state.borderScale); }
+            else if (state.template === 'float') { padding = Math.round(Math.max(w, h) * 0.08 * state.borderScale); }
+            if (footerH < h * 0.02 && state.template !== 'float') footerH = h * 0.02;
+            let canvasW = w, canvasH = h, imgX = 0, imgY = 0;
+            if (state.template === 'classic') { canvasW = w + padding * 2; canvasH = h + padding + footerH; imgX = padding; imgY = padding; }
+            else if (state.template === 'cinema') { canvasH = h + footerH; canvasW = w; imgX = 0; imgY = 0; }
+            else if (state.template === 'float') { canvasW = w + padding * 2; canvasH = h + padding * 2; imgX = padding; imgY = padding; }
+            canvas.width = canvasW; canvas.height = canvasH;
+
+            let bgCol = '#ffffff', txtCol = '#000000', subCol = '#666666';
+            if (state.template !== 'float') bgCol = state.frameColor === 'white' ? '#ffffff' : '#000000';
+            if (state.fontColor === 'black') { txtCol = '#000000'; subCol = '#444444'; }
+            else if (state.fontColor === 'white') { txtCol = '#ffffff'; subCol = state.template === 'float' ? 'rgba(255,255,255,0.8)' : '#bbbbbb'; }
+            else { if (state.template === 'float') { txtCol = '#ffffff'; subCol = 'rgba(255,255,255,0.8)'; } else if (bgCol === '#ffffff') { txtCol = '#000000'; subCol = '#666666'; } else { txtCol = '#ffffff'; subCol = '#999999'; } }
+
+            if (state.template === 'float') { const offC = document.createElement('canvas'); offC.width = 50; offC.height = 50 * (h / w); offC.getContext('2d').drawImage(img, 0, 0, offC.width, offC.height); ctx.filter = 'blur(50px) brightness(0.6)'; ctx.drawImage(offC, 0, 0, canvasW, canvasH); ctx.filter = 'none'; }
+            else { ctx.fillStyle = bgCol; ctx.fillRect(0, 0, canvasW, canvasH); }
+
+            ctx.save();
+            if (state.template === 'float') { ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 40; ctx.shadowOffsetY = 20; const rScale = Math.min(w, h) / 1000; const r = Math.round(state.radius * rScale); ctx.beginPath(); ctx.roundRect(imgX, imgY, w, h, r); ctx.clip(); }
+            ctx.drawImage(img, imgX, imgY, w, h); ctx.restore();
+
+            let baseY;
+            if (state.template === 'float') baseY = imgY + h - (Math.max(w, h) * 0.02);
+            else if (state.template === 'classic') baseY = h + padding + footerH / 2; else baseY = h + footerH / 2;
+
+            const baseSize = Math.round(Math.max(24, h * 0.018) * state.fontScale);
+            const lx = Math.round(state.layout.left.x * canvasW); const rx = Math.round(state.layout.right.x * canvasW);
+            const lyOffset = Math.round(state.layout.left.y * canvasH);
+            const ryOffset = Math.round(state.layout.right.y * canvasH);
+
+            ctx.textAlign = state.layout.left.align; ctx.textBaseline = 'middle';
+
+            if (state.logo.useImage && state.logo.img) {
+                const logo = state.logo.img; const scale = state.logo.scale; const refH = baseSize * 2;
+                const drawH = Math.round(refH * scale); const drawW = Math.round(drawH * (logo.width / logo.height));
+                const drawY = Math.round(baseY + lyOffset - drawH / 2);
+                let drawX = lx; if (ctx.textAlign === 'center') drawX -= drawW / 2; if (ctx.textAlign === 'right') drawX -= drawW; drawX = Math.round(drawX);
+                ctx.save(); if (state.logo.invert) ctx.filter = 'invert(1)'; ctx.drawImage(logo, drawX, drawY, drawW, drawH); ctx.restore();
+            } else {
+                ctx.fillStyle = txtCol; ctx.font = `900 ${Math.round(baseSize * 1.5)}px 'Cinzel', serif`;
+                ctx.fillText(edit.make.toUpperCase(), lx, Math.round(baseY + lyOffset - baseSize * 0.4));
+                ctx.fillStyle = subCol; ctx.font = `600 ${Math.round(baseSize * 0.6)}px '${state.font}', sans-serif`;
+                ctx.fillText(edit.model, lx, Math.round(baseY + lyOffset + baseSize * 0.8));
+            }
+
+            ctx.textAlign = state.layout.right.align; ctx.fillStyle = txtCol; ctx.font = `500 ${baseSize}px 'Roboto Mono', monospace`; if (state.font !== 'Inter') ctx.font = `500 ${baseSize}px '${state.font}', monospace`;
+            const params = `${edit.focal}  ${edit.aperture}  ${edit.shutter}  ISO${edit.iso}`;
+            ctx.fillText(params, rx, Math.round(baseY + ryOffset - baseSize * 0.4));
+            ctx.fillStyle = subCol; ctx.font = `400 ${Math.round(baseSize * 0.65)}px '${state.font}', sans-serif`; const sub = `${edit.lens}  |  ${edit.date}`;
+            ctx.fillText(sub, rx, Math.round(baseY + ryOffset + baseSize * 0.8));
+        }
+
+        canvas.addEventListener('mousedown', (e) => { if (state.currentIndex === -1) return; const rect = canvas.getBoundingClientRect(); const x = (e.clientX - rect.left) * (canvas.width / rect.width); const y = (e.clientY - rect.top) * (canvas.height / rect.height); const w = canvas.width; const h = canvas.height; let baseY; const img = state.images[state.currentIndex].imgObj; let padding = 0, footerH = 0; if (state.template === 'classic') { padding = Math.round(Math.max(img.width, img.height) * 0.03 * state.borderScale); footerH = Math.round(img.height * 0.12 * state.borderScale); if (state.borderScale < 0.1 && state.borderScale > 0) footerH = Math.round(img.height * 0.05); baseY = img.height + padding + footerH / 2; } else if (state.template === 'cinema') { footerH = Math.round(img.height * 0.10 * state.borderScale); if (footerH < img.height * 0.02) footerH = img.height * 0.02; baseY = img.height + footerH / 2; } else if (state.template === 'float') { padding = Math.round(Math.max(img.width, img.height) * 0.08 * state.borderScale); baseY = padding + img.height - (Math.max(img.width, img.height) * 0.02); } const lx = state.layout.left.x * w; const ly = baseY + state.layout.left.y * h; const rx = state.layout.right.x * w; const ry = baseY + state.layout.right.y * h; const hitRadiusX = w * 0.2; const hitRadiusY = h * 0.1; if (Math.abs(x - lx) < hitRadiusX && Math.abs(y - ly) < hitRadiusY) { isDragging = true; dragTarget = 'left'; dragStartPos = { x: e.clientX, y: e.clientY }; dragStartLayout = { ...state.layout.left }; } else if (Math.abs(x - rx) < hitRadiusX && Math.abs(y - ry) < hitRadiusY) { isDragging = true; dragTarget = 'right'; dragStartPos = { x: e.clientX, y: e.clientY }; dragStartLayout = { ...state.layout.right }; } });
+        window.addEventListener('mousemove', (e) => { if (!isDragging) return; const rect = canvas.getBoundingClientRect(); const w = canvas.width; const h = canvas.height; const scaleX = w / rect.width; const scaleY = h / rect.height; const dx = (e.clientX - dragStartPos.x) * scaleX; const dy = (e.clientY - dragStartPos.y) * scaleY; let newXPct = dragStartLayout.x + dx / w; newXPct = Math.max(0.02, Math.min(0.98, newXPct)); let newYPct = dragStartLayout.y + dy / h; if (Math.abs(newXPct - 0.05) < 0.02) newXPct = 0.05; else if (Math.abs(newXPct - 0.5) < 0.02) newXPct = 0.5; else if (Math.abs(newXPct - 0.95) < 0.02) newXPct = 0.95; if (Math.abs(newYPct) < 0.015) newYPct = 0; state.layout[dragTarget].x = newXPct; state.layout[dragTarget].y = newYPct; render(); });
+        window.addEventListener('mouseup', () => { if (isDragging) { const t = state.layout[dragTarget]; if (t.x < 0.1) { t.align = 'left'; } else if (t.x > 0.9) { t.align = 'right'; } else if (Math.abs(t.x - 0.5) < 0.1) { t.align = 'center'; } isDragging = false; dragTarget = null; render(); } });
+
+        init();
+    </script>
+</body>
+</html>
