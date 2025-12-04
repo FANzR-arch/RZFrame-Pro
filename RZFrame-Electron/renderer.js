@@ -37,9 +37,9 @@ Object.assign(window, {
 
 // --- Translations ---
 const translations = {
-    cn: { loading: "正在解析...", subtitle: "By F.Z.R", templateStyle: "模版风格", tplGallery: "画廊", tplCinema: "电影", tplFloat: "悬浮", styleParam: "样式参数", fontScale: "字体大小", borderScale: "边框尺寸", radius: "悬浮圆角", frameBg: "边框背景", textColor: "文字颜色", auto: "自动", cameraLogo: "相机 LOGO", invert: "反色", scale: "缩放", typography: "字体设置", fontDefault: "默认 (Inter)", fontSerif: "衬线体 (Song)", fontMono: "等宽体 (Mono)", fontCustom: "自定义系统字体...", paramEdit: "参数设定", labelMake: "品牌", labelModel: "型号", labelLens: "镜头", labelFocal: "焦距", labelAperture: "光圈", labelShutter: "快门", labelISO: "ISO", labelDate: "日期", exportSettings: "导出", saveImage: "保存", clickToUpload: "点击或拖拽导入照片", supportedFormats: "支持 JPG / PNG / WebP / HEIC", filmstrip: "图库", add: "添加", clear: "清空", noPhotos: "暂无照片", exifInspector: "EXIF 信息", metaFile: "文件", metaSize: "大小", metaDim: "分辨率", metaMake: "厂商", metaModel: "型号", metaLens: "镜头", metaSoftware: "软件", tplLibrary: "模版库", noSavedTpl: "暂无保存的预设", tplPlaceholder: "预设名称...", filePlaceholder: "文件名 (默认自动)", btnText: "文字", btnLogo: "图片", canvasRatio: "画布比例", ratioOriginal: "原图 + 边框", imgZoom: "图片缩放", dragTip: "提示: 拖拽画面可平移照片", bgBrightness: "背景亮度", metaTip: "如未显示内容，请检查是否存在照片信息", applyAll: "应用到所有", importingPrefix: "正在导入 ", importingSuffix: " 张图片" },
-    en: { loading: "Parsing...", subtitle: "By F.Z.R", templateStyle: "STYLE", tplGallery: "Gallery", tplCinema: "Cinema", tplFloat: "Float", styleParam: "PARAMETERS", fontScale: "Font Size", borderScale: "Border", radius: "Radius", frameBg: "Frame Color", textColor: "Text Color", auto: "Auto", cameraLogo: "LOGO", invert: "Invert", scale: "Scale", typography: "TYPOGRAPHY", fontDefault: "Default", fontSerif: "Serif", fontMono: "Mono", fontCustom: "Custom...", paramEdit: "METADATA", labelMake: "Make", labelModel: "Model", labelLens: "Lens", labelFocal: "Focal", labelAperture: "Aperture", labelShutter: "Time", labelISO: "ISO", labelDate: "Date", exportSettings: "EXPORT", saveImage: "SAVE", clickToUpload: "DROP IMAGE HERE", supportedFormats: "JPG/PNG", filmstrip: "GALLERY", add: "Add", clear: "Clear", noPhotos: "No photos", exifInspector: "EXIF DATA", metaFile: "FILE", metaSize: "SIZE", metaDim: "DIM", metaMake: "MAKE", metaModel: "MODEL", metaLens: "LENS", metaSoftware: "SOFTWARE", tplLibrary: "LIBRARY", noSavedTpl: "Empty", tplPlaceholder: "Name...", filePlaceholder: "Filename", btnText: "TEXT", btnLogo: "LOGO", canvasRatio: "CANVAS RATIO", ratioOriginal: "Original + Border", imgZoom: "Image Zoom", dragTip: "Tip: Drag image to pan", bgBrightness: "Bg Brightness", metaTip: "Missing info? Check original photo metadata", applyAll: "Apply All", importingPrefix: "Importing ", importingSuffix: " images" },
-    jp: { loading: "解析中...", subtitle: "By F.Z.R", templateStyle: "スタイル", tplGallery: "ギャラリー", tplCinema: "シネマ", tplFloat: "フロート", styleParam: "パラメータ", fontScale: "文字サイズ", borderScale: "枠線", radius: "半径", frameBg: "枠色", textColor: "文字色", auto: "自動", cameraLogo: "ロゴ", invert: "反転", scale: "サイズ", typography: "フォント", fontDefault: "標準", fontSerif: "明朝", fontMono: "等幅", fontCustom: "カスタム...", paramEdit: "メタデータ", labelMake: "メーカー", labelModel: "モデル", labelLens: "レンズ", labelFocal: "焦点距離", labelAperture: "絞り", labelShutter: "シャッター", labelISO: "ISO", labelDate: "日付", exportSettings: "保存", saveImage: "保存", clickToUpload: "画像をアップロード", supportedFormats: "JPG/PNG", filmstrip: "ギャラリー", add: "追加", clear: "クリア", noPhotos: "なし", exifInspector: "EXIF情報", metaFile: "ファイル", metaSize: "サイズ", metaDim: "解像度", metaMake: "メーカー", metaModel: "モデル", metaLens: "レンズ", metaSoftware: "ソフト", tplLibrary: "ライブラリ", noSavedTpl: "空", tplPlaceholder: "名前...", filePlaceholder: "ファイル名", btnText: "テキスト", btnLogo: "ロゴ", canvasRatio: "比率", ratioOriginal: "オリジナル", imgZoom: "ズーム", dragTip: "ヒント: ドラッグして移動", bgBrightness: "背景の明るさ", metaTip: "情報が表示されない場合は、元の写真を確認してください", applyAll: "すべてに適用", importingPrefix: "", importingSuffix: " 枚の画像を読み込み中" }
+    cn: { loading: "正在解析...", subtitle: "By F.Z.R", templateStyle: "模版风格", tplGallery: "画廊", tplCinema: "电影", tplFloat: "悬浮", styleParam: "样式参数", fontScale: "字体大小", borderScale: "边框尺寸", radius: "悬浮圆角", frameBg: "边框背景", textColor: "文字颜色", auto: "自动", cameraLogo: "相机 LOGO", invert: "反色", scale: "缩放", typography: "字体设置", fontDefault: "默认 (Inter)", fontSerif: "衬线体 (Song)", fontMono: "等宽体 (Mono)", fontCustom: "自定义系统字体...", paramEdit: "参数设定", labelMake: "品牌", labelModel: "型号", labelLens: "镜头", labelFocal: "焦距", labelAperture: "光圈", labelShutter: "快门", labelISO: "ISO", labelDate: "日期", exportSettings: "导出", saveImage: "保存", clickToUpload: "点击或拖拽导入照片", supportedFormats: "支持 JPG / PNG / WebP / HEIC", filmstrip: "图库", add: "添加", clear: "清空", noPhotos: "暂无照片", exifInspector: "EXIF 信息", metaFile: "文件", metaSize: "大小", metaDim: "分辨率", metaMake: "厂商", metaModel: "型号", metaLens: "镜头", metaSoftware: "软件", tplLibrary: "模版库", noSavedTpl: "暂无保存的预设", tplPlaceholder: "预设名称...", filePlaceholder: "文件名 (默认自动)", btnText: "文字", btnLogo: "图片", canvasRatio: "画布比例", ratioOriginal: "原图 + 边框", imgZoom: "图片缩放", dragTip: "提示: 拖拽画面可平移照片", bgBrightness: "背景亮度", metaTip: "如未显示内容，请检查是否存在照片信息", applyAll: "应用到所有", importingPrefix: "正在导入 ", importingSuffix: " 张图片", batch: "批量保存", saveSuccess: "图片保存成功！", btnSaved: "已保存" },
+    en: { loading: "Parsing...", subtitle: "By F.Z.R", templateStyle: "STYLE", tplGallery: "Gallery", tplCinema: "Cinema", tplFloat: "Float", styleParam: "PARAMETERS", fontScale: "Font Size", borderScale: "Border", radius: "Radius", frameBg: "Frame Color", textColor: "Text Color", auto: "Auto", cameraLogo: "LOGO", invert: "Invert", scale: "Scale", typography: "TYPOGRAPHY", fontDefault: "Default", fontSerif: "Serif", fontMono: "Mono", fontCustom: "Custom...", paramEdit: "METADATA", labelMake: "Make", labelModel: "Model", labelLens: "Lens", labelFocal: "Focal", labelAperture: "Aperture", labelShutter: "Time", labelISO: "ISO", labelDate: "Date", exportSettings: "EXPORT", saveImage: "SAVE", clickToUpload: "DROP IMAGE HERE", supportedFormats: "JPG/PNG", filmstrip: "GALLERY", add: "Add", clear: "Clear", noPhotos: "No photos", exifInspector: "EXIF DATA", metaFile: "FILE", metaSize: "SIZE", metaDim: "DIM", metaMake: "MAKE", metaModel: "MODEL", metaLens: "LENS", metaSoftware: "SOFTWARE", tplLibrary: "LIBRARY", noSavedTpl: "Empty", tplPlaceholder: "Name...", filePlaceholder: "Filename", btnText: "TEXT", btnLogo: "LOGO", canvasRatio: "CANVAS RATIO", ratioOriginal: "Original + Border", imgZoom: "Image Zoom", dragTip: "Tip: Drag image to pan", bgBrightness: "Bg Brightness", metaTip: "Missing info? Check original photo metadata", applyAll: "Apply All", importingPrefix: "Importing ", importingSuffix: " images", batch: "BATCH", saveSuccess: "Image saved successfully!", btnSaved: "SAVED" },
+    jp: { loading: "解析中...", subtitle: "By F.Z.R", templateStyle: "スタイル", tplGallery: "ギャラリー", tplCinema: "シネマ", tplFloat: "フロート", styleParam: "パラメータ", fontScale: "文字サイズ", borderScale: "枠線", radius: "半径", frameBg: "枠色", textColor: "文字色", auto: "自動", cameraLogo: "ロゴ", invert: "反転", scale: "サイズ", typography: "フォント", fontDefault: "標準", fontSerif: "明朝", fontMono: "等幅", fontCustom: "カスタム...", paramEdit: "メタデータ", labelMake: "メーカー", labelModel: "モデル", labelLens: "レンズ", labelFocal: "焦点距離", labelAperture: "絞り", labelShutter: "シャッター", labelISO: "ISO", labelDate: "日付", exportSettings: "保存", saveImage: "保存", clickToUpload: "画像をアップロード", supportedFormats: "JPG/PNG", filmstrip: "ギャラリー", add: "追加", clear: "クリア", noPhotos: "なし", exifInspector: "EXIF情報", metaFile: "ファイル", metaSize: "サイズ", metaDim: "解像度", metaMake: "メーカー", metaModel: "モデル", metaLens: "レンズ", metaSoftware: "ソフト", tplLibrary: "ライブラリ", noSavedTpl: "空", tplPlaceholder: "名前...", filePlaceholder: "ファイル名", btnText: "テキスト", btnLogo: "ロゴ", canvasRatio: "比率", ratioOriginal: "オリジナル", imgZoom: "ズーム", dragTip: "ヒント: ドラッグして移動", bgBrightness: "背景の明るさ", metaTip: "情報が表示されない場合は、元の写真を確認してください", applyAll: "すべてに適用", importingPrefix: "", importingSuffix: " 枚の画像を読み込み中", batch: "一括保存", saveSuccess: "画像の保存に成功しました！", btnSaved: "保存完了" }
 };
 
 // --- Logic Functions ---
@@ -58,8 +58,39 @@ function findLensInfo(tags) {
 function tryLoadBrandLogo(make) {
     return new Promise((resolve) => {
         if (!make) { resolve(null); return; }
-        const cleanMake = make.toLowerCase().replace(/corporation/g, '').replace(/\./g, '').trim().split(' ')[0];
-        const logoPath = `assets/logos/${cleanMake}.png`;
+        let cleanMake = make.toLowerCase().trim();
+
+        // Map known brands to filenames
+        const map = {
+            'phase one': 'Phase_One',
+            'pentax': 'Pentax',
+            'hasselblad': 'hasselblad',
+            'leica': 'leica',
+            'fujifilm': 'fujifilm',
+            'olympus': 'olympus',
+            'panasonic': 'panasonic',
+            'ricoh': 'ricoh',
+            'sigma': 'sigma',
+            'sony': 'sony',
+            'canon': 'canon',
+            'nikon': 'nikon',
+            'dji': 'dji',
+            'gopro': 'gopro'
+        };
+
+        let filename = null;
+        for (const key in map) {
+            if (cleanMake.includes(key)) {
+                filename = map[key];
+                break;
+            }
+        }
+
+        if (!filename) {
+            filename = cleanMake.replace(/corporation/g, '').replace(/\./g, '').trim().split(' ')[0];
+        }
+
+        const logoPath = `assets/logos/${filename}.png`;
         const img = new Image();
         img.onload = () => resolve(img);
         img.onerror = () => resolve(null);
@@ -270,7 +301,7 @@ async function batchSave() {
             await ipc.invoke('save-file-direct', fileName, dataURL);
             loadPercent.innerText = Math.round(((i + 1) / state.images.length) * 100);
         }
-        alert("Batch save completed!");
+        alert(translations[state.lang].saveSuccess);
     } catch (err) { alert("Batch save failed: " + err); } finally { loader.classList.add('opacity-0'); setTimeout(() => loader.classList.add('hidden'), 300); if (originalIndex !== -1) selectImage(originalIndex); }
 }
 
@@ -297,7 +328,7 @@ async function downloadImage() {
 function showSaveFeedback() {
     const btn = document.querySelector('button[onclick="downloadImage()"]');
     const originalContent = btn.innerHTML;
-    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> SAVED`;
+    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> ${translations[state.lang].btnSaved}`;
     btn.classList.replace('bg-zinc-800', 'bg-green-500'); btn.classList.replace('dark:bg-white', 'bg-green-500');
     setTimeout(() => { btn.innerHTML = originalContent; btn.classList.replace('bg-green-500', 'bg-zinc-800'); btn.classList.replace('bg-green-500', 'dark:bg-white'); refreshIcons(); }, 2000);
     refreshIcons();
@@ -684,6 +715,8 @@ function processNewImage(file) {
                         const autoLogo = await tryLoadBrandLogo(imgData.userEdit.make);
                         if (autoLogo) {
                             imgData.autoLogo = autoLogo;
+                            imgData.config.logo.img = autoLogo;
+                            imgData.config.logo.useImage = true;
                         }
 
                         state.images.push(imgData);
