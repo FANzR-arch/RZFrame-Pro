@@ -354,7 +354,18 @@ function init() {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
         overlay.classList.add('opacity-0', 'pointer-events-none');
-        setTimeout(() => overlay.remove(), 500);
+        setTimeout(() => overlay.classList.add('hidden'), 500);
+    }
+
+    // Add Event Listeners
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+
+    const logoInput = document.getElementById('logoInput');
+    if (logoInput) {
+        logoInput.addEventListener('change', handleLogoUpload);
     }
 }
 
