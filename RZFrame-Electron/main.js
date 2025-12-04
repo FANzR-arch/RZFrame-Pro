@@ -44,7 +44,14 @@ app.on('activate', function () {
 
 // --- Log Rotation ---
 function rotateLogs() {
-  const logDir = path.join(__dirname, 'log');
+  const logDir = path.join(app.getPath('userData'), 'log');
+  try {
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+  } catch (e) {
+    console.error("Failed to create log dir:", e);
+    return;
+  }
+
   if (!fs.existsSync(logDir)) return;
 
   // 1. Rename current app.log to app-{timestamp}.log
@@ -94,9 +101,14 @@ ipcMain.on('window-close', () => mainWindow.close());
 
 // 日志记录
 ipcMain.on('log-message', (event, logData) => {
-  const logDir = path.join(__dirname, 'log');
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
+  const logDir = path.join(app.getPath('userData'), 'log');
+  try {
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+  } catch (e) {
+    console.error("Failed to create log dir:", e);
+    return;
   }
   const logPath = path.join(logDir, 'app.log');
   const logEntry = `[${new Date().toISOString()}] [${logData.level}] ${logData.message} ${logData.data ? JSON.stringify(logData.data) : ''}\n`;
@@ -162,8 +174,14 @@ ipcMain.handle('save-file-dialog', async (event, dataUrl, defaultName) => {
 });
 
 // --- Template Library Handlers ---
-const TPL_DIR = path.join(__dirname, 'templates');
-if (!fs.existsSync(TPL_DIR)) fs.mkdirSync(TPL_DIR);
+let TPL_DIR;
+try {
+  TPL_DIR = path.join(app.getPath('userData'), 'templates');
+  if (!fs.existsSync(TPL_DIR)) fs.mkdirSync(TPL_DIR, { recursive: true });
+} catch (e) {
+  console.error("Failed to init template dir:", e);
+  dialog.showErrorBox("Initialization Error", "Failed to create template directory.\n" + e.message);
+}
 
 ipcMain.handle('template-list', async () => {
   try {
