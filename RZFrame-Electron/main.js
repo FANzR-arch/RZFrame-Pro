@@ -2,6 +2,10 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const SystemFonts = require('system-font-families').default;
+const Store = require('electron-store');
+
+// 初始化 Store (用于存储用户偏好，如模板路径)
+const store = new Store();
 
 let mainWindow;
 
@@ -42,7 +46,8 @@ app.on('activate', function () {
   if (mainWindow === null) createWindow();
 });
 
-// --- Log Rotation ---
+// --- Log Rotation (Type A: 系统日志 - 自动保存到 userData) ---
+// 策略：用户无需感知，自动维护，用于故障排查
 function rotateLogs() {
   const logDir = path.join(app.getPath('userData'), 'log');
   try {
@@ -130,7 +135,8 @@ ipcMain.handle('query-local-fonts', async () => {
   }
 });
 
-// 3. 选择文件夹 (用于批量保存)
+// 3. 选择文件夹 (用于批量保存 - Type B: 用户导出)
+// 策略：每次操作时由用户明确指定保存位置
 ipcMain.handle('select-folder-dialog', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory']
@@ -142,7 +148,7 @@ ipcMain.handle('select-folder-dialog', async () => {
   }
 });
 
-// 4. 直接保存文件 (核心：处理 Base64 并写入磁盘)
+// 4. 直接保存文件 (Type B: 用户导出)
 ipcMain.handle('save-file-direct', async (event, filePath, dataUrl) => {
   try {
     // 移除 DataURL 前缀 (e.g., "data:image/jpeg;base64,")
@@ -157,7 +163,8 @@ ipcMain.handle('save-file-direct', async (event, filePath, dataUrl) => {
   }
 });
 
-// 5. 单文件保存对话框
+// 5. 单文件保存对话框 (Type B: 用户导出)
+// 策略：使用 dialog.showSaveDialog 让用户选择路径
 ipcMain.handle('save-file-dialog', async (event, dataUrl, defaultName) => {
   const { filePath } = await dialog.showSaveDialog(mainWindow, {
     defaultPath: defaultName,
@@ -173,22 +180,49 @@ ipcMain.handle('save-file-dialog', async (event, dataUrl, defaultName) => {
   return { success: false };
 });
 
-// --- Template Library Handlers ---
-let TPL_DIR;
+// --- Template Library Handlers (Type C: 模板库 - 可配置路径) ---
+// 策略：默认存储在 userData，但允许用户修改存储位置 (通过 electron-store 记录)
+
+function getTemplateDir() {
+  // 优先从 store 获取用户自定义路径，如果没有则使用默认路径
+  const defaultPath = path.join(app.getPath('userData'), 'templates');
+  return store.get('templatePath', defaultPath);
+}
+
+// 初始化模板目录
 try {
-  TPL_DIR = path.join(app.getPath('userData'), 'templates');
-  if (!fs.existsSync(TPL_DIR)) fs.mkdirSync(TPL_DIR, { recursive: true });
+  const tplDir = getTemplateDir();
+  if (!fs.existsSync(tplDir)) fs.mkdirSync(tplDir, { recursive: true });
 } catch (e) {
   console.error("Failed to init template dir:", e);
-  dialog.showErrorBox("Initialization Error", "Failed to create template directory.\n" + e.message);
+  // 不弹窗阻断，仅记录错误，后续操作会再次尝试或报错
 }
+
+// IPC: 获取当前模板路径
+ipcMain.handle('get-template-path', () => {
+  return getTemplateDir();
+});
+
+// IPC: 设置模板路径 (允许用户自定义)
+ipcMain.handle('set-template-path', async (event, newPath) => {
+  try {
+    if (!fs.existsSync(newPath)) fs.mkdirSync(newPath, { recursive: true });
+    store.set('templatePath', newPath);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
 
 ipcMain.handle('template-list', async () => {
   try {
-    const files = fs.readdirSync(TPL_DIR).filter(f => f.endsWith('.json'));
+    const tplDir = getTemplateDir();
+    if (!fs.existsSync(tplDir)) fs.mkdirSync(tplDir, { recursive: true });
+
+    const files = fs.readdirSync(tplDir).filter(f => f.endsWith('.json'));
     const templates = files.map(f => {
       try {
-        const content = fs.readFileSync(path.join(TPL_DIR, f), 'utf-8');
+        const content = fs.readFileSync(path.join(tplDir, f), 'utf-8');
         return JSON.parse(content);
       } catch (e) { return null; }
     }).filter(t => t !== null);
@@ -201,7 +235,10 @@ ipcMain.handle('template-list', async () => {
 
 ipcMain.handle('template-save', async (event, template) => {
   try {
-    const filePath = path.join(TPL_DIR, `${template.id}.json`);
+    const tplDir = getTemplateDir();
+    if (!fs.existsSync(tplDir)) fs.mkdirSync(tplDir, { recursive: true });
+
+    const filePath = path.join(tplDir, `${template.id}.json`);
     fs.writeFileSync(filePath, JSON.stringify(template, null, 2));
     return { success: true };
   } catch (e) {
@@ -212,7 +249,8 @@ ipcMain.handle('template-save', async (event, template) => {
 
 ipcMain.handle('template-delete', async (event, id) => {
   try {
-    const filePath = path.join(TPL_DIR, `${id}.json`);
+    const tplDir = getTemplateDir();
+    const filePath = path.join(tplDir, `${id}.json`);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     return { success: true };
   } catch (e) {

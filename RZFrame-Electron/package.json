@@ -16,6 +16,7 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
+    "electron-store": "^8.1.0",
     "exif-js": "^2.3.0",
     "lucide": "^0.344.0",
     "system-font-families": "^1.0.0"
@@ -29,6 +30,10 @@
         "portable"
       ],
       "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "mac": {
       "target": "dmg",
