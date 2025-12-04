@@ -23,7 +23,11 @@
   "build": {
     "appId": "com.rzframe.workstation",
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "zip",
+        "portable"
+      ],
       "icon": "assets/icon.ico"
     },
     "mac": {
@@ -32,6 +36,18 @@
     },
     "directories": {
       "output": "dist"
-    }
+    },
+    "files": [
+      "**/*",
+      "!**/*.ts",
+      "!*.map",
+      "!package-lock.json",
+      "!*.log",
+      "!log",
+      "!startup_log.txt",
+      "!RZFrame.vbs",
+      "!start.bat",
+      "!src/**/*.ts"
+    ]
   }
 }
