@@ -139,15 +139,59 @@ ipcMain.on('log-message', (event, logData) => {
 
 
 // 2. 获取系统字体
+// 2. 获取系统字体 (Robust PowerShell Fallback)
 ipcMain.handle('query-local-fonts', async () => {
   try {
-    const systemFonts = new SystemFonts();
-    const fontList = await systemFonts.getFonts();
-    // 返回格式适配前端: [{ family: 'Arial' }, ...]
-    return fontList.map(f => ({ family: f }));
+    const { exec } = require('child_process');
+    return new Promise((resolve) => {
+      // Use PowerShell to list fonts from registry which is cleaner, or just list file names.
+      // Listing registry is better to get actual family names.
+      const cmd = `powershell -Command "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' | Select-Object -Property *"`;
+
+      exec(cmd, { maxBuffer: 1024 * 1024 * 5 }, (error, stdout, stderr) => {
+        if (error) {
+          console.error("Font PS error:", error);
+          resolve([]);
+          return;
+        }
+
+        const fonts = [];
+        const lines = stdout.split('\n');
+        // Parse the registry output. Keys are font names, values are filenames.
+        // We just want keys that look like font names.
+        // PowerShell output format for Select-Object * is header/value pairs or list.
+        // Better command for simple parsing:
+
+        // Simpler approach: Just return specific common fonts to verify it works, 
+        // OR better: scan the Fonts folder for names (less accurate family names).
+
+        // BEST APPROACH: "Get-ChildItem C:\Windows\Fonts" and parse file names is easiest but ugly.
+        // Registry approach with JSON output is best.
+      });
+
+      // Synchronous valid alternative for stability:
+      // Just hardcode common Windows, Mac, Linux system fonts? No, user wants THEIR fonts.
+
+      // Retry with JSON output for reliability
+      const psCommand = `powershell -Command "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' | ConvertTo-Json"`;
+      exec(psCommand, { maxBuffer: 1024 * 1024 * 10 }, (err, stdout) => {
+        if (err) { resolve([]); return; }
+        try {
+          const data = JSON.parse(stdout);
+          const fontNames = Object.keys(data).filter(k => k !== 'PSPath' && k !== 'PSPrentPath' && k !== 'PSChildName' && k !== 'PSDrive' && k !== 'PSProvider');
+          // Clean up names (remove " (TrueType)")
+          const cleanFonts = fontNames.map(f => f.replace(/ \(TrueType\)/g, '').replace(/ \(OpenType\)/g, '').replace(/ \(All Res\)/g, ''));
+          // Deduplicate and sort
+          const unique = [...new Set(cleanFonts)].sort();
+          resolve(unique.map(f => ({ family: f })));
+        } catch (parseErr) {
+          resolve([]);
+        }
+      });
+    });
   } catch (e) {
     console.error("Font load error:", e);
-    return []; // 失败降级返回空数组，使用默认字体
+    return [];
   }
 });
 

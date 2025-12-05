@@ -120,7 +120,10 @@ async function loadSystemFonts() {
         const sep = document.createElement('option'); sep.disabled = true; sep.text = "--- System Fonts ---"; select.add(sep);
         uniqueFonts.forEach(font => { const opt = document.createElement('option'); opt.value = font; opt.text = font; select.add(opt); });
         const customOpt = document.createElement('option'); customOpt.value = "custom"; customOpt.text = "Custom Font..."; customOpt.setAttribute('data-i18n', 'fontCustom'); select.add(customOpt);
-    } catch (err) { console.error("Font error:", err); }
+    } catch (err) {
+        console.error("Font error:", err);
+        alert("Font loading failed: " + err.message);
+    }
 }
 
 function applySettingsToAll() {
@@ -1123,6 +1126,7 @@ function renderTemplateList() {
         c.appendChild(el);
     });
     refreshIcons();
+    loadSystemFonts();
 }
 
 function attemptStart() {
