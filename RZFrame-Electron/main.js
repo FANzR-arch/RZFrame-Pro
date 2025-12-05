@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const SystemFonts = require('system-font-families').default;
+const { ExifTool } = require("exiftool-vendored");
+const exiftool = new ExifTool({ taskTimeoutMillis: 5000 });
 const Store = require('electron-store');
 
 // 初始化 Store (用于存储用户偏好，如模板路径)
@@ -39,6 +40,7 @@ function createWindow() {
 // app.whenReady().then(createWindow); // Moved to rotateLogs block
 
 app.on('window-all-closed', function () {
+  exiftool.end();
   if (process.platform !== 'darwin') app.quit();
 });
 
@@ -48,12 +50,25 @@ app.on('activate', function () {
 
 // --- Log Rotation (Type A: 系统日志 - 自动保存到 userData) ---
 // 策略：用户无需感知，自动维护，用于故障排查
+function getLogDir() {
+  // 优先使用 Portable 目录，或 exe 同级目录 (生产环境)
+  // 如果是开发环境，使用项目根目录 logs
+  let base = '';
+  if (app.isPackaged) {
+    base = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(app.getPath('exe'));
+  } else {
+    base = __dirname;
+  }
+  return path.join(base, 'logs'); // Save to 'logs' subfolder in root
+}
+
 function rotateLogs() {
-  const logDir = path.join(app.getPath('userData'), 'log');
+  const logDir = getLogDir();
   try {
     if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
   } catch (e) {
-    console.error("Failed to create log dir:", e);
+    console.error("Failed to create log dir at root, falling back to userData:", e);
+    // Fallback? User insisted on root. Just return for now.
     return;
   }
 
@@ -106,7 +121,7 @@ ipcMain.on('window-close', () => mainWindow.close());
 
 // 日志记录
 ipcMain.on('log-message', (event, logData) => {
-  const logDir = path.join(app.getPath('userData'), 'log');
+  const logDir = getLogDir();
   try {
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
@@ -121,6 +136,7 @@ ipcMain.on('log-message', (event, logData) => {
     if (err) console.error("Failed to write log:", err);
   });
 });
+
 
 // 2. 获取系统字体
 ipcMain.handle('query-local-fonts', async () => {
@@ -178,6 +194,61 @@ ipcMain.handle('save-file-dialog', async (event, dataUrl, defaultName) => {
     return { success: true };
   }
   return { success: false };
+});
+
+ipcMain.handle('analyze-exif', async (event, filePath) => {
+  try {
+    const tags = await exiftool.read(filePath);
+
+    // 1. Priority: LensID > LensModel
+    // Check if they exist and are valid strings (not just "----")
+    let lensName = null;
+    if (tags.LensID && tags.LensID !== '----' && tags.LensID.length > 5) {
+      lensName = tags.LensID;
+    } else if (tags.LensModel && tags.LensModel !== '----' && tags.LensModel.length > 5) {
+      lensName = tags.LensModel;
+    } else if (tags.LensType && tags.LensType !== '----' && tags.LensType.length > 5) {
+      lensName = tags.LensType;
+    }
+
+    if (lensName) return { lensName, tags };
+
+    // 2. Heuristic Regex Search
+    const stringValues = Object.values(tags).filter(v => typeof v === 'string');
+    for (const val of stringValues) {
+      // Must contain "mm" (case insensitive)
+      if (!/mm/i.test(val)) continue;
+
+      // Must contain aperture (F, f/, 1:) OR range (-)
+      const hasAperture = /[Ff]\/|1:|F\d/.test(val);
+      const hasRange = /\d+-\d+/.test(val); // e.g., 18-105
+
+      if (hasAperture || hasRange) {
+        // Exclusion checks:
+        // Exclude pure sensor size or simple focal length (e.g. "35 mm", "4.5 mm", "36x24 mm")
+        if (/^\d+(\.\d+)?\s*mm$/i.test(val)) continue;
+        if (/^\d+x\d+\s*mm$/i.test(val)) continue;
+
+        return { lensName: val, tags };
+      }
+    }
+
+    return { lensName: null, tags };
+  } catch (err) {
+    console.error('Exiftool error:', err);
+    return { error: err.message };
+  }
+});
+
+// --- Logo Path Handler ---
+ipcMain.handle('get-logos-path', () => {
+  if (app.isPackaged) {
+    // 生产环境：exe 同级目录下的 assets/logos
+    return path.join(path.dirname(app.getPath('exe')), 'assets', 'logos');
+  } else {
+    // 开发环境：项目根目录下的 assets/logos
+    return path.join(__dirname, 'assets', 'logos');
+  }
 });
 
 // --- Template Library Handlers (Type C: 模板库 - 可配置路径) ---

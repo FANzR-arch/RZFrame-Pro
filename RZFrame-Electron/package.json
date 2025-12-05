@@ -18,6 +18,8 @@
   "dependencies": {
     "electron-store": "^8.1.0",
     "exif-js": "^2.3.0",
+    "exif-parser": "^0.1.12",
+    "exiftool-vendored": "^33.5.0",
     "lucide": "^0.344.0",
     "system-font-families": "^1.0.0"
   },
@@ -52,7 +54,17 @@
       "!startup_log.txt",
       "!RZFrame.vbs",
       "!start.bat",
-      "!src/**/*.ts"
+      "!src/**/*.ts",
+      "assets/ui/**/*",
+      "!assets/logos/**/*"
+    ],
+    "extraFiles": [
+      "assets/logos"
+    ],
+    "asarUnpack": [
+      "**/node_modules/exiftool-vendored.exe/**/*",
+      "**/node_modules/exiftool-vendored.pl/**/*",
+      "**/node_modules/exiftool-vendored/**/*"
     ]
   }
 }

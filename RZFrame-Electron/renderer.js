@@ -42,12 +42,18 @@ const translations = {
     jp: { loading: "解析中...", subtitle: "By F.Z.R", templateStyle: "スタイル", tplGallery: "ギャラリー", tplCinema: "シネマ", tplFloat: "フロート", styleParam: "パラメータ", fontScale: "文字サイズ", borderScale: "枠線", radius: "半径", frameBg: "枠色", textColor: "文字色", auto: "自動", cameraLogo: "ロゴ", invert: "反転", scale: "サイズ", typography: "フォント", fontDefault: "標準", fontSerif: "明朝", fontMono: "等幅", fontCustom: "カスタム...", paramEdit: "メタデータ", labelMake: "メーカー", labelModel: "モデル", labelLens: "レンズ", labelFocal: "焦点距離", labelAperture: "絞り", labelShutter: "シャッター", labelISO: "ISO", labelDate: "日付", exportSettings: "保存", saveImage: "保存", clickToUpload: "画像をアップロード", supportedFormats: "JPG/PNG", filmstrip: "ギャラリー", add: "追加", clear: "クリア", noPhotos: "なし", exifInspector: "EXIF情報", metaFile: "ファイル", metaSize: "サイズ", metaDim: "解像度", metaMake: "メーカー", metaModel: "モデル", metaLens: "レンズ", metaSoftware: "ソフト", tplLibrary: "ライブラリ", noSavedTpl: "空", tplPlaceholder: "名前...", filePlaceholder: "ファイル名", btnText: "テキスト", btnLogo: "ロゴ", canvasRatio: "比率", ratioOriginal: "オリジナル", imgZoom: "ズーム", dragTip: "ヒント: ドラッグして移動", bgBrightness: "背景の明るさ", metaTip: "情報が表示されない場合は、元の写真を確認してください", applyAll: "すべてに適用", importingPrefix: "", importingSuffix: " 枚の画像を読み込み中", batch: "一括保存", saveSuccess: "画像の保存に成功しました！", btnSaved: "保存完了" }
 };
 
+let logosPath = 'assets/logos'; // Default fallback
+
 // --- Logic Functions ---
 
 function findLensInfo(tags) {
     if (tags.LensModel && tags.LensModel !== "" && tags.LensModel !== "----") return tags.LensModel;
     if (tags.Lens && tags.Lens !== "" && tags.Lens !== "----") return tags.Lens;
     if (tags.LensInfo && tags.LensInfo !== "" && tags.LensInfo !== "----") return tags.LensInfo;
+    if (tags.LensID && tags.LensID !== "" && tags.LensID !== "----") return tags.LensID;            // New check
+    if (tags.LensType && tags.LensType !== "" && tags.LensType !== "----") return tags.LensType;    // New check
+
+    // Fallback: Construct from Focal/Aperture
     let focal = tags.FocalLength ? `${tags.FocalLength}mm` : "";
     let ap = tags.FNumber ? `f/${tags.FNumber}` : "";
     if (focal && ap) return `${focal} ${ap}`;
@@ -90,7 +96,8 @@ function tryLoadBrandLogo(make) {
             filename = cleanMake.replace(/corporation/g, '').replace(/\./g, '').trim().split(' ')[0];
         }
 
-        const logoPath = `assets/logos/${filename}.png`;
+        // Use absolute path with file protocol (3 slashes for Windows drive paths)
+        const logoPath = `file:///${logosPath}/${filename}.png`;
         const img = new Image();
         img.onload = () => resolve(img);
         img.onerror = () => resolve(null);
@@ -340,6 +347,14 @@ let isInitialized = false;
 function init() {
     if (isInitialized) return;
 
+    // Fetch logos path from main process
+    if (isElectron()) {
+        ipc.invoke('get-logos-path').then(path => {
+            if (path) logosPath = path.replace(/\\/g, '/');
+            console.log("Logos path set to:", logosPath);
+        });
+    }
+
     initLogger();
     setupDragAndDrop();
 
@@ -398,6 +413,8 @@ function init() {
     if (logoInput) {
         logoInput.addEventListener('change', handleLogoUpload);
     }
+
+    refreshIcons();
 }
 
 function updateConfig(key, val) {
@@ -673,13 +690,44 @@ function processNewImage(file) {
                     autoLogo: null,
                     config: JSON.parse(JSON.stringify(defaultConfig))
                 };
-                if (window.EXIF) {
-                    window.EXIF.getData(img, async function () {
-                        const tags = window.EXIF.getAllTags(this);
+                if (isElectron()) {
+                    // Use backend robust analysis
+                    ipc.invoke('analyze-exif', file.path).then(async (result) => {
+                        console.log("EXIF Result (Backend):", result);
+                        const tags = result.tags || {};
+                        const lensInfo = result.lensName || "Lens Info";
+
                         const make = (tags.Make || 'Unknown').replace(/\0/g, '');
                         const model = (tags.Model || 'Unknown').replace(/\0/g, '');
 
-                        const lensInfo = findLensInfo(tags);
+                        // const lensInfo = findLensInfo(tags); // Deprecated in favor of backend
+
+
+                        // Parse Date
+                        const rawDate = tags.DateTimeOriginal || tags.DateTime || tags.CreateDate;
+                        let dateStr = '--';
+                        if (rawDate) {
+                            if (typeof rawDate === 'string') {
+                                dateStr = rawDate;
+                            } else if (typeof rawDate === 'object') {
+                                // Handle ExifDateTime object structure from exiftool-vendored
+                                if (rawDate.rawValue) {
+                                    dateStr = rawDate.rawValue;
+                                } else if (rawDate.year && rawDate.month && rawDate.day) {
+                                    // Manually construct standard EXIF date format: YYYY:MM:DD HH:mm:ss
+                                    const pad = (n) => n.toString().padStart(2, '0');
+                                    dateStr = `${rawDate.year}:${pad(rawDate.month)}:${pad(rawDate.day)}`;
+                                    if (rawDate.hour !== undefined) {
+                                        dateStr += ` ${pad(rawDate.hour)}:${pad(rawDate.minute)}:${pad(rawDate.second || 0)}`;
+                                    }
+                                } else {
+                                    dateStr = String(rawDate); // Fallback
+                                }
+                            }
+                        }
+
+                        // Parse ISO
+                        const isoVal = tags.ISO || tags.ISOSpeedRatings || '--';
 
                         imgData.metaDisplay = {
                             filename: file.name,
@@ -689,17 +737,26 @@ function processNewImage(file) {
                             model: model,
                             lens: lensInfo,
                             software: tags.Software || '--',
-                            date: tags.DateTimeOriginal || tags.DateTime || '--',
+                            date: dateStr,
                             focal: tags.FocalLength ? `${tags.FocalLength}mm` : '--',
                             aperture: tags.FNumber ? `f/${tags.FNumber}` : '--',
                             shutter: tags.ExposureTime ? (tags.ExposureTime < 1 ? `1/${Math.round(1 / tags.ExposureTime)}` : `${tags.ExposureTime}"`) : '--',
-                            iso: tags.ISOSpeedRatings || '--',
+                            iso: isoVal,
                             flash: tags.Flash === undefined ? '--' : (tags.Flash & 1 ? 'Fired' : 'Off')
                         };
 
                         let modelClean = imgData.metaDisplay.model;
                         if (modelClean.includes('ILCE-7RM2')) modelClean = 'Sony A7R II';
-                        let dateClean = imgData.metaDisplay.date.split(' ')[0].replace(/:/g, '.');
+
+                        // Fix for date object/string mismatch causing crash
+                        let dateClean = '--';
+                        try {
+                            // Ensure we rely on our nicely formatted dateStr from above
+                            dateClean = imgData.metaDisplay.date.split(' ')[0].replace(/:/g, '.');
+                        } catch (e) {
+                            console.warn("Date parse error", e);
+                            dateClean = imgData.metaDisplay.date;
+                        }
 
                         imgData.userEdit = {
                             make: imgData.metaDisplay.make,
@@ -721,7 +778,20 @@ function processNewImage(file) {
 
                         state.images.push(imgData);
                         resolve();
-                    });
+                    })
+                        .catch(err => {
+                            console.error("EXIF IPC Failed:", err);
+                            if (window.api && window.api.send) {
+                                window.api.send('log-message', { level: 'error', message: `EXIF Analysis Failed: ${file.name}`, data: err.message });
+                            }
+
+                            // Fallback data
+                            imgData.metaDisplay = { filename: file.name, filesize: (file.size / 1024 / 1024).toFixed(2) + ' MB', dimensions: `${img.width} x ${img.height}`, make: 'Unknown', model: 'Unknown', lens: '--', software: '--', date: '--', focal: '--', aperture: '--', shutter: '--', iso: '--', flash: '--' };
+                            imgData.userEdit = { make: 'Unknown', model: 'Unknown', lens: '--', focal: '--', aperture: '--', shutter: '--', iso: '--', date: '--' };
+
+                            state.images.push(imgData);
+                            resolve();
+                        });
                 } else {
                     console.warn("EXIF library not loaded");
                     // Fallback for no EXIF
