@@ -741,7 +741,7 @@ function processNewImage(file) {
                             lens: lensInfo,
                             software: tags.Software || '--',
                             date: dateStr,
-                            focal: tags.FocalLength ? `${tags.FocalLength}mm` : '--',
+                            focal: tags.FocalLength ? `${parseFloat(tags.FocalLength)}mm` : '--',
                             aperture: tags.FNumber ? `f/${tags.FNumber}` : '--',
                             shutter: tags.ExposureTime ? (tags.ExposureTime < 1 ? `1/${Math.round(1 / tags.ExposureTime)}` : `${tags.ExposureTime}"`) : '--',
                             iso: isoVal,
