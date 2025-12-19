@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { ExifTool } = require("exiftool-vendored");
@@ -23,7 +23,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false, // 禁用 Node.js 集成 (安全)
       contextIsolation: true, // 开启上下文隔离 (安全)
-      webSecurity: false, // 保持关闭以允许加载本地图片 (注意：生产环境建议开启并使用自定义协议)
+      webSecurity: true, // 启用 Web 安全
       preload: path.join(__dirname, 'preload.js'), // 确保预加载脚本路径正确
       devTools: true
     }
@@ -103,7 +103,20 @@ function rotateLogs() {
   });
 }
 
+// --- Security: Registered Protocols ---
 app.whenReady().then(() => {
+  // 注册 rz-local 协议 (用于安全加载本地资源)
+  protocol.registerFileProtocol('rz-local', (request, callback) => {
+    const url = request.url.replace('rz-local://', '');
+    try {
+      // Decode and normalize path (Handles /C:/... -> C:\... on Windows)
+      const filePath = path.normalize(decodeURIComponent(url));
+      return callback({ path: filePath });
+    } catch (error) {
+      console.error('Protocol Error:', error);
+    }
+  });
+
   rotateLogs();
   createWindow();
 });
@@ -195,8 +208,11 @@ ipcMain.handle('query-local-fonts', async () => {
   }
 });
 
+// --- IO Security: Allowed Paths Whitelist ---
+const allowedWritePaths = new Set();
+
 // 3. 选择文件夹 (用于批量保存 - Type B: 用户导出)
-// 策略：每次操作时由用户明确指定保存位置
+// 策略：每次操作时由用户明确指定保存位置，并将该路径加入白名单
 ipcMain.handle('select-folder-dialog', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory']
@@ -204,13 +220,33 @@ ipcMain.handle('select-folder-dialog', async () => {
   if (result.canceled) {
     return { success: false };
   } else {
-    return { success: true, path: result.filePaths[0] };
+    const selectedPath = result.filePaths[0];
+    allowedWritePaths.add(selectedPath); // Join whitelist
+    return { success: true, path: selectedPath };
   }
 });
 
 // 4. 直接保存文件 (Type B: 用户导出)
+// 安全增强：仅允许写入白名单目录及其子目录
 ipcMain.handle('save-file-direct', async (event, filePath, dataUrl) => {
   try {
+    // 校验路径权限
+    const targetDir = path.dirname(filePath);
+    let isAllowed = false;
+    for (const allowedPath of allowedWritePaths) {
+      const rel = path.relative(allowedPath, targetDir);
+      // 如果 rel 为空(同一目录)或不以 '..' 开头(子目录)且不包含绝对路径，则允许
+      // path.relative 返回空字符串表示相同路径？不，是 ''。
+      if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+        isAllowed = true;
+        break;
+      }
+    }
+
+    if (!isAllowed) {
+      throw new Error(`Permission Denied: Writing to ${filePath} is not allowed. Please select the folder first.`);
+    }
+
     // 移除 DataURL 前缀 (e.g., "data:image/jpeg;base64,")
     const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');

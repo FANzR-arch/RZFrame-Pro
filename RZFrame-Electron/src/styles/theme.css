@@ -1,0 +1,333 @@
+/* === RZFrame x Glassmorphism 视觉系统 v2.3 === */
+:root {
+    --bg-color: #e0e5ec;
+    --bg-gradient: radial-gradient(circle at 50% 30%, #dcecfc 0%, #e0e5ec 60%);
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-border-highlight: rgba(255, 255, 255, 0.95);
+    --shadow-color-main: rgba(163, 177, 198, 0.3);
+    --shadow-color-light: rgba(255, 255, 255, 0.7);
+    --shadow-blur: 16px;
+    --shadow-offset: 6px;
+    --text-main: #2d3748;
+    --text-sub: #718096;
+    --input-bg: rgba(255, 255, 255, 0.5);
+    --accent-color: #000000;
+    --slider-dot: rgba(0, 0, 0, 0.2);
+}
+
+html.dark {
+    --bg-color: #1a202c;
+    --bg-gradient: radial-gradient(circle at 50% 30%, #2d3748 0%, #1a202c 60%);
+    --glass-bg: rgba(20, 25, 35, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-highlight: rgba(255, 255, 255, 0.2);
+    --shadow-color-main: rgba(0, 0, 0, 0.5);
+    --shadow-color-light: rgba(255, 255, 255, 0.01);
+    --text-main: #f7fafc;
+    --text-sub: #a0aec0;
+    --input-bg: rgba(0, 0, 0, 0.3);
+    --accent-color: #ffffff;
+    --slider-dot: rgba(255, 255, 255, 0.2);
+}
+
+body {
+    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    transition: color 0.3s ease, background 0.5s ease;
+    background-color: var(--bg-color);
+    background-image: var(--bg-gradient);
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+#bg-layer {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-color: transparent;
+    transition: opacity 0.8s ease-in-out, filter 0.8s ease;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    filter: saturate(1.1) brightness(1.0);
+}
+
+html.dark #bg-layer {
+    filter: saturate(0.8) brightness(0.4);
+}
+
+#bg-blur {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    backdrop-filter: blur(60px);
+    -webkit-backdrop-filter: blur(60px);
+    background: transparent;
+    transition: backdrop-filter 1s;
+}
+
+.glass-panel {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid var(--glass-border);
+    border-top: 1px solid var(--glass-border-highlight);
+    border-left: 1px solid var(--glass-border-highlight);
+    box-shadow: var(--shadow-offset) var(--shadow-offset) var(--shadow-blur) var(--shadow-color-main), calc(var(--shadow-offset) * -0.5) calc(var(--shadow-offset) * -0.5) var(--shadow-blur) var(--shadow-color-light), inset 1px 1px 2px var(--glass-border-highlight);
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.glass-panel.interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) calc(var(--shadow-blur) + 4px) var(--shadow-color-main), calc(var(--shadow-offset) * -0.5) calc(var(--shadow-offset) * -0.5) calc(var(--shadow-blur) + 4px) var(--shadow-color-light), inset 1px 1px 2px var(--glass-border-highlight);
+}
+
+.glass-input {
+    background: var(--input-bg);
+    border-radius: 12px;
+    border: 1px solid transparent;
+    color: var(--text-main);
+    transition: all 0.2s;
+    font-weight: 500;
+    font-size: 12px;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.05), inset -2px -2px 5px rgba(255, 255, 255, 0.5);
+}
+
+html.dark .glass-input {
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-input:focus {
+    outline: none;
+    background: var(--glass-bg);
+    box-shadow: 0 0 0 2px var(--glass-border-highlight);
+}
+
+.tpl-btn {
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.tpl-btn.active {
+    border-color: var(--text-main);
+    background: var(--glass-bg);
+    box-shadow: 0 4px 12px var(--shadow-color-main);
+}
+
+input[type=range].dotted-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    background: transparent;
+}
+
+input[type=range].dotted-slider:focus {
+    outline: none;
+}
+
+input[type=range].dotted-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    background-image: radial-gradient(circle, var(--slider-dot) 1.5px, transparent 1.5px);
+    background-size: 8px 100%;
+    background-repeat: repeat-x;
+    background-position: center;
+}
+
+input[type=range].dotted-slider::-webkit-slider-thumb {
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    background: var(--text-main);
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--glass-bg);
+    transition: transform 0.1s;
+}
+
+input[type=range].dotted-slider:active::-webkit-slider-thumb {
+    transform: scale(1.2);
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.auto-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s;
+}
+
+.auto-scrollbar:hover {
+    scrollbar-color: var(--text-sub) transparent;
+}
+
+.auto-scrollbar::-webkit-scrollbar {
+    height: 4px;
+    width: 4px;
+    background: transparent;
+}
+
+.auto-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 2px;
+}
+
+.auto-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.5);
+}
+
+.input-label {
+    font-size: 11px;
+    color: var(--text-sub);
+    font-weight: 700;
+    text-align: right;
+    padding-right: 10px;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+canvas {
+    display: block;
+}
+
+.lang-opt {
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0.5;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.lang-opt:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .lang-opt:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.lang-opt.active {
+    opacity: 1;
+    color: var(--accent-color);
+    background: var(--input-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.loader-ring {
+    display: inline-block;
+    width: 48px;
+    height: 48px;
+}
+
+.loader-ring:after {
+    content: " ";
+    display: block;
+    width: 40px;
+    height: 40px;
+    margin: 4px;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    border-color: #fff transparent #fff transparent;
+    animation: loader-ring 1.2s linear infinite;
+}
+
+@keyframes loader-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.seg-control {
+    display: flex;
+    background: var(--input-bg);
+    padding: 4px;
+    border-radius: 10px;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+html.dark .seg-control {
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.seg-btn {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    padding: 5px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-sub);
+    font-weight: 600;
+}
+
+.seg-btn.active {
+    background: var(--glass-bg);
+    color: var(--text-main);
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--glass-border-highlight);
+}
+
+html.dark .seg-btn.active {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.win-ctrl-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+    color: var(--text-sub);
+    -webkit-app-region: no-drag;
+    cursor: pointer;
+}
+
+.win-ctrl-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--text-main);
+}
+
+html.dark .win-ctrl-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.win-ctrl-btn.close:hover {
+    background-color: #ef4444;
+    color: white;
+}
