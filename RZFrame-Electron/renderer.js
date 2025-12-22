@@ -1,5 +1,5 @@
-import { state, resetState, updateState, defaultConfig } from './src/core/state.js';
-import { initCanvas, render, getCanvas } from './src/core/canvas.js';
+import { state, resetState, updateState, defaultConfig, setActiveImage, getActiveImage } from './src/core/state.js';
+import { initCanvas, render, getCanvas, loadImage } from './src/core/canvas.js';
 import { setupCanvasListeners, handleWindowControl } from './src/ui/events.js';
 import { ipc, isElectron } from './src/utils/ipc.js';
 import { initLogger } from './src/utils/logger.js';
@@ -277,8 +277,11 @@ async function batchSave() {
     loader.classList.remove('hidden', 'opacity-0');
     try {
         for (let i = 0; i < state.images.length; i++) {
-            selectImage(i);
-            await new Promise(r => setTimeout(r, 50));
+            // Updated: Await the async selectImage to define activeHighResImage
+            await selectImage(i);
+            // Give UI a moment to breathe and render the canvas
+            await new Promise(r => setTimeout(r, 100));
+
             const originalName = state.images[i].file.name.split('.')[0];
             const sep = targetFolder.includes('/') ? '/' : '\\';
             const fileName = targetFolder.endsWith(sep) ? targetFolder + `${originalName}_ExifFrame.jpg` : targetFolder + sep + `${originalName}_ExifFrame.jpg`;
@@ -653,139 +656,134 @@ function setCustomFont(v) {
 
 
 
+// --- Refactored Image Processing (Memory Safe) ---
+
 function processNewImage(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const img = new Image();
-            img.onload = () => {
-                const imgData = {
-                    file: file,
-                    imgObj: img,
-                    thumbUrl: createThumbnail(img),
-                    metaDisplay: {},
-                    userEdit: {},
-                    autoLogo: null,
-                    config: JSON.parse(JSON.stringify(defaultConfig))
-                };
-                if (isElectron()) {
-                    // Use backend robust analysis
-                    ipc.invoke('analyze-exif', file.path).then(async (result) => {
-                        console.log("EXIF Result (Backend):", result);
-                        const tags = result.tags || {};
-                        const lensInfo = result.lensName || "Lens Info";
+    return new Promise(async (resolve) => {
+        // MEMORY OPTIMIZATION:
+        // Do NOT use FileReader to read the whole file into Base64 (Memory Explosion for 42MP files).
+        // Instead, load the image via 'rz-local' protocol (streaming from disk).
 
-                        const make = (tags.Make || 'Unknown').replace(/\0/g, '');
-                        const model = (tags.Model || 'Unknown').replace(/\0/g, '');
+        let srcPath = '';
+        if (isElectron()) {
+            // Normalize path for URL
+            srcPath = `rz-local:///${file.path.replace(/\\/g, '/')}`;
+        } else {
+            // Web fallback (still dangerous for memory, but unavoidable without backend)
+            srcPath = URL.createObjectURL(file);
+        }
 
-                        // const lensInfo = findLensInfo(tags); // Deprecated in favor of backend
+        const img = new Image();
+        img.onload = async () => {
+            // 1. Create Thumbnail (Low Res)
+            const thumbUrl = createThumbnail(img);
 
-
-                        // Parse Date
-                        const rawDate = tags.DateTimeOriginal || tags.DateTime || tags.CreateDate;
-                        let dateStr = '--';
-                        if (rawDate) {
-                            if (typeof rawDate === 'string') {
-                                dateStr = rawDate;
-                            } else if (typeof rawDate === 'object') {
-                                // Handle ExifDateTime object structure from exiftool-vendored
-                                if (rawDate.rawValue) {
-                                    dateStr = rawDate.rawValue;
-                                } else if (rawDate.year && rawDate.month && rawDate.day) {
-                                    // Manually construct standard EXIF date format: YYYY:MM:DD HH:mm:ss
-                                    const pad = (n) => n.toString().padStart(2, '0');
-                                    dateStr = `${rawDate.year}:${pad(rawDate.month)}:${pad(rawDate.day)}`;
-                                    if (rawDate.hour !== undefined) {
-                                        dateStr += ` ${pad(rawDate.hour)}:${pad(rawDate.minute)}:${pad(rawDate.second || 0)}`;
-                                    }
-                                } else {
-                                    dateStr = String(rawDate); // Fallback
-                                }
-                            }
-                        }
-
-                        // Parse ISO
-                        const isoVal = tags.ISO || tags.ISOSpeedRatings || '--';
-
-                        imgData.metaDisplay = {
-                            filename: file.name,
-                            filesize: (file.size / 1024 / 1024).toFixed(2) + ' MB',
-                            dimensions: `${img.width} x ${img.height}`,
-                            make: make,
-                            model: model,
-                            lens: lensInfo,
-                            software: tags.Software || '--',
-                            date: dateStr,
-                            focal: tags.FocalLength ? `${parseFloat(tags.FocalLength)}mm` : '--',
-                            aperture: tags.FNumber ? `f/${tags.FNumber}` : '--',
-                            shutter: tags.ExposureTime ? (tags.ExposureTime < 1 ? `1/${Math.round(1 / tags.ExposureTime)}` : `${tags.ExposureTime}"`) : '--',
-                            iso: isoVal,
-                            flash: tags.Flash === undefined ? '--' : (tags.Flash & 1 ? 'Fired' : 'Off')
-                        };
-
-                        let modelClean = imgData.metaDisplay.model;
-                        if (modelClean.includes('ILCE-7RM2')) modelClean = 'Sony A7R II';
-
-                        // Fix for date object/string mismatch causing crash
-                        let dateClean = '--';
-                        try {
-                            // Ensure we rely on our nicely formatted dateStr from above
-                            dateClean = imgData.metaDisplay.date.split(' ')[0].replace(/:/g, '.');
-                        } catch (e) {
-                            console.warn("Date parse error", e);
-                            dateClean = imgData.metaDisplay.date;
-                        }
-
-                        imgData.userEdit = {
-                            make: imgData.metaDisplay.make,
-                            model: modelClean,
-                            lens: imgData.metaDisplay.lens,
-                            focal: imgData.metaDisplay.focal,
-                            aperture: imgData.metaDisplay.aperture,
-                            shutter: imgData.metaDisplay.shutter,
-                            iso: imgData.metaDisplay.iso,
-                            date: dateClean
-                        };
-
-                        const autoLogo = await tryLoadBrandLogo(imgData.userEdit.make);
-                        if (autoLogo) {
-                            imgData.autoLogo = autoLogo;
-                            imgData.config.logo.img = autoLogo;
-                            imgData.config.logo.useImage = true;
-                        }
-
-                        state.images.push(imgData);
-                        resolve();
-                    })
-                        .catch(err => {
-                            console.error("EXIF IPC Failed:", err);
-                            if (window.api && window.api.send) {
-                                window.api.send('log-message', { level: 'error', message: `EXIF Analysis Failed: ${file.name}`, data: err.message });
-                            }
-
-                            // Fallback data
-                            imgData.metaDisplay = { filename: file.name, filesize: (file.size / 1024 / 1024).toFixed(2) + ' MB', dimensions: `${img.width} x ${img.height}`, make: 'Unknown', model: 'Unknown', lens: '--', software: '--', date: '--', focal: '--', aperture: '--', shutter: '--', iso: '--', flash: '--' };
-                            imgData.userEdit = { make: 'Unknown', model: 'Unknown', lens: '--', focal: '--', aperture: '--', shutter: '--', iso: '--', date: '--' };
-
-                            state.images.push(imgData);
-                            resolve();
-                        });
-                } else {
-                    console.warn("EXIF library not loaded");
-                    // Fallback for no EXIF
-                    imgData.metaDisplay = { filename: file.name, filesize: (file.size / 1024 / 1024).toFixed(2) + ' MB', dimensions: `${img.width} x ${img.height}`, make: 'Unknown', model: 'Unknown', lens: '--', software: '--', date: '--', focal: '--', aperture: '--', shutter: '--', iso: '--', flash: '--' };
-                    imgData.userEdit = { make: 'Unknown', model: 'Unknown', lens: '--', focal: '--', aperture: '--', shutter: '--', iso: '--', date: '--' };
-                    state.images.push(imgData);
-                    resolve();
-                }
+            // 2. Prepare Data Structure
+            const imgData = {
+                file: file,
+                // imgObj: img, <--- DELETED! Do not keep reference.
+                thumbUrl: thumbUrl,
+                metaDisplay: {},
+                userEdit: {},
+                autoLogo: null,
+                config: JSON.parse(JSON.stringify(defaultConfig))
             };
-            img.src = evt.target.result;
+
+            // 3. Extract Metadata (ExifTool via IPC)
+            if (isElectron()) {
+                try {
+                    const result = await ipc.invoke('analyze-exif', file.path);
+                    console.log("EXIF:", result);
+                    const tags = result.tags || {};
+                    const lensInfo = result.lensName || "Lens Info";
+                    const make = (tags.Make || 'Unknown').replace(/\0/g, '');
+                    const model = (tags.Model || 'Unknown').replace(/\0/g, '');
+
+                    const rawDate = tags.DateTimeOriginal || tags.DateTime || tags.CreateDate;
+                    let dateStr = '--';
+                    if (rawDate) {
+                        if (typeof rawDate === 'object' && rawDate.year) {
+                            const pad = (n) => n.toString().padStart(2, '0');
+                            dateStr = `${rawDate.year}:${pad(rawDate.month)}:${pad(rawDate.day)}`;
+                        } else {
+                            dateStr = String(rawDate).split(' ')[0].replace(/:/g, '.');
+                        }
+                    }
+
+                    const isoVal = tags.ISO || tags.ISOSpeedRatings || '--';
+
+                    imgData.metaDisplay = {
+                        filename: file.name,
+                        filesize: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+                        dimensions: `${img.width} x ${img.height}`,
+                        make: make,
+                        model: model,
+                        lens: lensInfo,
+                        software: tags.Software || '--',
+                        date: dateStr,
+                        focal: tags.FocalLength ? `${parseFloat(tags.FocalLength)}mm` : '--',
+                        aperture: tags.FNumber ? `f/${tags.FNumber}` : '--',
+                        shutter: tags.ExposureTime ? (tags.ExposureTime < 1 ? `1/${Math.round(1 / tags.ExposureTime)}` : `${tags.ExposureTime}"`) : '--',
+                        iso: isoVal,
+                        flash: tags.Flash === undefined ? '--' : (tags.Flash & 1 ? 'Fired' : 'Off')
+                    };
+
+                    let modelClean = imgData.metaDisplay.model;
+                    if (modelClean.includes('ILCE-7RM2')) modelClean = 'Sony A7R II';
+                    if (modelClean.includes('ILCE-7RM5')) modelClean = 'Sony A7R V';
+
+                    imgData.userEdit = {
+                        make: imgData.metaDisplay.make,
+                        model: modelClean,
+                        lens: imgData.metaDisplay.lens,
+                        focal: imgData.metaDisplay.focal,
+                        aperture: imgData.metaDisplay.aperture,
+                        shutter: imgData.metaDisplay.shutter,
+                        iso: imgData.metaDisplay.iso,
+                        date: imgData.metaDisplay.date
+                    };
+
+                    const autoLogo = await tryLoadBrandLogo(imgData.userEdit.make);
+                    if (autoLogo) {
+                        imgData.autoLogo = autoLogo;
+                        imgData.config.logo.img = autoLogo;
+                        imgData.config.logo.useImage = true;
+                    }
+
+                } catch (e) {
+                    console.error("Exif parsing failed", e);
+                }
+            }
+
+            // 4. Push to State
+            state.images.push(imgData);
+
+            // 5. Cleanup
+            // Revoke object URL if web
+            if (!isElectron()) URL.revokeObjectURL(srcPath);
+
+            // Allow GC to collect the large image
+            img.src = "";
+
+            resolve();
         };
-        reader.readAsDataURL(file);
+        img.onerror = (e) => {
+            console.error("Failed to load image for processing", e);
+            resolve();
+        };
+        img.src = srcPath;
     });
 }
 
-function createThumbnail(img) { const c = document.createElement('canvas'); const h = 100; const a = img.width / img.height; c.height = h; c.width = h * a; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL(); }
+function createThumbnail(img) {
+    const c = document.createElement('canvas');
+    const h = 200; // Increased resolution slightly for better sidebar look
+    const a = img.width / img.height;
+    c.height = h;
+    c.width = h * a;
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.7); // Use JPEG for smaller memory footprint in sidebar
+}
 async function initTemplates() {
     if (isElectron()) {
         const tpls = await ipc.invoke('template-list');
@@ -803,94 +801,139 @@ async function initTemplates() {
 }
 function updateFilmstrip() { const s = document.getElementById('thumbnailStrip'); s.innerHTML = ''; document.getElementById('imgCount').innerText = state.images.length; state.images.forEach((d, i) => { const div = document.createElement('div'); const sel = i === state.currentIndex; div.className = `relative h-full w-auto shrink-0 cursor-pointer rounded-lg overflow-hidden transition-all duration-200 group ${sel ? 'ring-2 ring-white opacity-100 shadow-lg scale-105 z-10' : 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0'}`; div.onclick = () => selectImage(i); const delBtn = document.createElement('button'); delBtn.className = "absolute top-1 right-1 bg-red-500 text-white w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 z-20 shadow-sm"; delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`; delBtn.onclick = (e) => deleteImage(i, e); const t = document.createElement('img'); t.src = d.thumbUrl; t.className = "h-full w-auto object-contain"; div.appendChild(t); div.appendChild(delBtn); s.appendChild(div); }); refreshIcons(); }
 
-function selectImage(idx) {
+// --- Async Select Image (Lazy Load) ---
+async function selectImage(idx) {
     if (state.images.length === 0) { clearPhotosUI(); return; }
-    state.currentIndex = idx;
-    const d = state.images[idx];
-    const config = d.config;
 
-    updateBackground(d.imgObj);
-
-    // Show Canvas, Hide Empty State
-    document.getElementById('emptyState').classList.add('hidden');
-    const canvas = getCanvas();
-    if (canvas) canvas.classList.remove('hidden');
-
-    // Sync UI with Image Config
-    document.getElementById('fontSelector').value = config.font;
-    document.getElementById('radiusInput').value = config.radius;
-    document.getElementById('radiusVal').innerText = config.radius + 'px';
-    document.getElementById('fontScaleInput').value = config.fontScale;
-    document.getElementById('fontScaleVal').innerText = config.fontScale.toFixed(1) + 'x';
-    document.getElementById('borderScaleInput').value = config.borderScale;
-    document.getElementById('borderScaleVal').innerText = config.borderScale.toFixed(1) + 'x';
-    document.getElementById('ratioSelector').value = config.aspectRatio;
-    document.getElementById('bgBrightnessInput').value = config.bgBrightness;
-    document.getElementById('bgBrightnessVal').innerText = config.bgBrightness.toFixed(2);
-    document.getElementById('imgScaleInput').value = Math.round(config.imageScale * 100);
-    document.getElementById('imgScaleVal').innerText = Math.round(config.imageScale * 100) + '%';
-
-    // Logo UI
-    document.getElementById('logoScaleInput').value = Math.round(config.logo.scale * 100);
-    document.getElementById('scaleVal').innerText = Math.round(config.logo.scale * 100) + '%';
-
-    if (config.logo.useImage && config.logo.img) {
-        document.getElementById('logoPreview').src = config.logo.img.src;
-        document.getElementById('logoPreview').classList.remove('hidden');
-        document.getElementById('logoPlaceholderIcon').classList.add('hidden');
-    } else {
-        document.getElementById('logoPreview').classList.add('hidden');
-        document.getElementById('logoPlaceholderIcon').classList.remove('hidden');
+    // 1. Show Loading State immediately
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+        document.getElementById('loadPercent').innerText = 'Loading...';
+        document.getElementById('loadingText').innerText = "Loading High-Res Image";
     }
 
-    // Sync Template Buttons
-    ['classic', 'cinema', 'float'].forEach(id => {
-        const b = document.getElementById(`btn-${id}`);
-        if (id === config.template) b.classList.add('active');
-        else b.classList.remove('active');
-    });
+    try {
+        state.currentIndex = idx;
+        const d = state.images[idx];
+        const config = d.config;
 
-    // Sync Visibility
-    const rc = document.getElementById('radiusControl');
-    const bc = document.getElementById('bgBrightnessControl');
-    const fc = document.getElementById('frameColorGroup');
-    if (config.template === 'float') {
-        rc.classList.remove('hidden');
-        bc.classList.remove('hidden');
-        fc.classList.add('hidden');
-    } else {
-        rc.classList.add('hidden');
-        bc.classList.add('hidden');
-        fc.classList.remove('hidden');
+        // 2. Load High-Res Image on demand
+        // Release previous image first!
+        setActiveImage(null);
+
+        // Determine path (rz-local for Desktop speed)
+        let srcPath = '';
+        if (isElectron()) {
+            srcPath = `rz-local:///${d.file.path.replace(/\\/g, '/')}`;
+        } else {
+            // Web fallback: we didn't save the blob to memory, so we can't restore it without re-selection.
+            // Major limitation of Web version without File System Access API.
+            // For now, assume Desktop.
+            console.warn("Web version: Cannot lazy load from file input without Blob URL persistence. Hope the thumb is enough for preview?");
+        }
+
+        const highResImg = await loadImage(srcPath);
+        setActiveImage(highResImg);
+
+        // 3. Update UI
+        updateBackground(highResImg);
+
+        // Show Canvas, Hide Empty State
+        document.getElementById('emptyState').classList.add('hidden');
+        const canvas = getCanvas();
+        if (canvas) canvas.classList.remove('hidden');
+
+        // Sync UI with Image Config
+        document.getElementById('fontSelector').value = config.font;
+        document.getElementById('radiusInput').value = config.radius;
+        document.getElementById('radiusVal').innerText = config.radius + 'px';
+        document.getElementById('fontScaleInput').value = config.fontScale;
+        document.getElementById('fontScaleVal').innerText = config.fontScale.toFixed(1) + 'x';
+        document.getElementById('borderScaleInput').value = config.borderScale;
+        document.getElementById('borderScaleVal').innerText = config.borderScale.toFixed(1) + 'x';
+        document.getElementById('ratioSelector').value = config.aspectRatio;
+        document.getElementById('bgBrightnessInput').value = config.bgBrightness;
+        document.getElementById('bgBrightnessVal').innerText = config.bgBrightness.toFixed(2);
+        const scaleVal = Math.round(config.imageScale * 100);
+        document.getElementById('imgScaleInput').value = scaleVal;
+        document.getElementById('imgScaleVal').innerText = scaleVal + '%';
+
+        // Logo UI
+        document.getElementById('logoScaleInput').value = Math.round(config.logo.scale * 100);
+        document.getElementById('scaleVal').innerText = Math.round(config.logo.scale * 100) + '%';
+
+        if (config.logo.useImage && config.logo.img) {
+            document.getElementById('logoPreview').src = config.logo.img.src;
+            document.getElementById('logoPreview').classList.remove('hidden');
+            document.getElementById('logoPlaceholderIcon').classList.add('hidden');
+        } else {
+            document.getElementById('logoPreview').classList.add('hidden');
+            document.getElementById('logoPlaceholderIcon').classList.remove('hidden');
+        }
+
+        // Sync Template Buttons
+        ['classic', 'cinema', 'float'].forEach(id => {
+            const b = document.getElementById(`btn-${id}`);
+            if (id === config.template) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+
+        // Sync Visibility
+        const rc = document.getElementById('radiusControl');
+        const bc = document.getElementById('bgBrightnessControl');
+        const fc = document.getElementById('frameColorGroup');
+        if (config.template === 'float') {
+            rc.classList.remove('hidden');
+            bc.classList.remove('hidden');
+            fc.classList.add('hidden');
+        } else {
+            rc.classList.add('hidden');
+            bc.classList.add('hidden');
+            fc.classList.remove('hidden');
+        }
+
+        const cropControls = document.getElementById('cropControls');
+        if (config.aspectRatio === 'original') cropControls.classList.add('hidden');
+        else cropControls.classList.remove('hidden');
+
+        toggleBrandMode(config.logo.useImage ? 'image' : 'text');
+
+        // Sync Metadata Inputs
+        const ids = ['make', 'model', 'lens', 'focal', 'aperture', 'shutter', 'iso', 'date'];
+        ids.forEach(k => { const el = document.getElementById(`inp-${k}`); if (el) el.value = d.userEdit[k]; });
+
+        // Sync EXIF Panel
+        document.getElementById('meta-filename').innerText = d.metaDisplay.filename;
+        document.getElementById('meta-filesize').innerText = d.metaDisplay.filesize;
+        document.getElementById('meta-dim').innerText = d.metaDisplay.dimensions;
+        document.getElementById('meta-make').innerText = d.metaDisplay.make;
+        document.getElementById('meta-model').innerText = d.metaDisplay.model;
+        document.getElementById('meta-lens').innerText = d.metaDisplay.lens;
+        const ms = document.getElementById('meta-software'); if (ms) ms.innerText = d.metaDisplay.software;
+        document.getElementById('meta-focal').innerText = d.metaDisplay.focal;
+        document.getElementById('meta-aperture').innerText = d.metaDisplay.aperture;
+        document.getElementById('meta-shutter').innerText = d.metaDisplay.shutter;
+        document.getElementById('meta-iso').innerText = d.metaDisplay.iso;
+        const mf = document.getElementById('meta-flash'); if (mf) mf.innerText = `Flash: ${d.metaDisplay.flash}`;
+        const md = document.getElementById('meta-date'); if (md) md.innerText = `Date: ${d.metaDisplay.date}`;
+        document.getElementById('exportFilename').value = "";
+
+        updateFilmstrip();
+
+        // Render with new Active Image
+        render();
+
+    } catch (err) {
+        console.error("Error selecting image:", err);
+        alert("Failed to load image high-res: " + err.message);
+    } finally {
+        // Hide Loading
+        if (overlay) {
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
     }
-
-    const cropControls = document.getElementById('cropControls');
-    if (config.aspectRatio === 'original') cropControls.classList.add('hidden');
-    else cropControls.classList.remove('hidden');
-
-    toggleBrandMode(config.logo.useImage ? 'image' : 'text');
-
-    // Sync Metadata Inputs
-    const ids = ['make', 'model', 'lens', 'focal', 'aperture', 'shutter', 'iso', 'date'];
-    ids.forEach(k => { const el = document.getElementById(`inp-${k}`); if (el) el.value = d.userEdit[k]; });
-
-    // Sync EXIF Panel
-    document.getElementById('meta-filename').innerText = d.metaDisplay.filename;
-    document.getElementById('meta-filesize').innerText = d.metaDisplay.filesize;
-    document.getElementById('meta-dim').innerText = d.metaDisplay.dimensions;
-    document.getElementById('meta-make').innerText = d.metaDisplay.make;
-    document.getElementById('meta-model').innerText = d.metaDisplay.model;
-    document.getElementById('meta-lens').innerText = d.metaDisplay.lens;
-    const ms = document.getElementById('meta-software'); if (ms) ms.innerText = d.metaDisplay.software;
-    document.getElementById('meta-focal').innerText = d.metaDisplay.focal;
-    document.getElementById('meta-aperture').innerText = d.metaDisplay.aperture;
-    document.getElementById('meta-shutter').innerText = d.metaDisplay.shutter;
-    document.getElementById('meta-iso').innerText = d.metaDisplay.iso;
-    const mf = document.getElementById('meta-flash'); if (mf) mf.innerText = `Flash: ${d.metaDisplay.flash}`;
-    const md = document.getElementById('meta-date'); if (md) md.innerText = `Date: ${d.metaDisplay.date}`;
-    document.getElementById('exportFilename').value = "";
-    updateFilmstrip();
-    render();
 }
 
 const im = { 'inp-make': 'make', 'inp-model': 'model', 'inp-lens': 'lens', 'inp-focal': 'focal', 'inp-aperture': 'aperture', 'inp-shutter': 'shutter', 'inp-iso': 'iso', 'inp-date': 'date' }; Object.keys(im).forEach(id => { document.getElementById(id).addEventListener('input', (e) => { if (state.currentIndex === -1) return; state.images[state.currentIndex].userEdit[im[id]] = e.target.value; render(); }); });

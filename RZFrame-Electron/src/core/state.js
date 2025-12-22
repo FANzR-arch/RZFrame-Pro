@@ -27,7 +27,8 @@ export const defaultConfig = {
 };
 
 export const state = {
-    images: [], // Array of { file, imgObj, thumbUrl, metaDisplay, userEdit, autoLogo, config: {...} }
+    images: [], // Array of { file, thumbUrl, metaDisplay, userEdit, autoLogo, config: {...} } 
+    // ^ Changed: REMOVED 'imgObj' from here to prevent OOM
     currentIndex: -1,
     // Global UI state
     savedTemplates: [],
@@ -39,6 +40,20 @@ export const state = {
     ctx: null
 };
 
+// --- Memory Management: Single Active Image ---
+// Only hold ONE high-res image in memory at a time.
+let activeHighResImage = null;
+
+export function setActiveImage(img) {
+    activeHighResImage = img;
+}
+
+export function getActiveImage() {
+    return activeHighResImage;
+}
+
+// ------------------------------------------
+
 export function resetState() {
     const savedTemplates = state.savedTemplates;
     const theme = state.theme;
@@ -46,6 +61,8 @@ export function resetState() {
 
     state.images = [];
     state.currentIndex = -1;
+    activeHighResImage = null; // Clear high-res ref
+
     state.savedTemplates = savedTemplates;
     state.theme = theme;
     state.lang = lang;
