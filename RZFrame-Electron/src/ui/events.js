@@ -1,3 +1,10 @@
+/*
+[INPUT]  : MouseEvents, Window Events
+[OUTPUT] : State updates (layout positions)
+[POS]    : UI Interaction Layer
+[DECISION]: Centralizes event listeners to decouple DOM interaction from business logic.
+*/
+
 // src/ui/events.js
 import { state, updateState } from '../core/state.js';
 import { render, getCanvas } from '../core/canvas.js';

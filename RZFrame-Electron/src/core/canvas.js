@@ -1,3 +1,10 @@
+/*
+[INPUT]  : State config, Image objects
+[OUTPUT] : Rendered HTML5 Canvas
+[POS]    : Core Rendering Engine
+[DECISION]: Uses 2D Context for maximum compatibility. optimized with 'blurCache' for float template performance.
+*/
+
 // src/core/canvas.js
 import { state, getActiveImage } from './state.js';
 

@@ -1,3 +1,10 @@
+/*
+[INPUT]  : None (Initial State)
+[OUTPUT] : Global Application State object
+[POS]    : Core State Management Module
+[DECISION]: Uses a singleton 'state' object for simplicity instead of Redux/Context, suitable for small to medium scale apps.
+*/
+
 // src/core/state.js
 
 export const defaultConfig = {

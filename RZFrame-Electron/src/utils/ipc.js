@@ -1,3 +1,10 @@
+/*
+[INPUT]  : None
+[OUTPUT] : Safe IPC Wrapper
+[POS]    : Utility / Bridge Layer
+[DECISION]: Encapsulates Electron IPC to support potential web-only fallback (graceful degradation).
+*/
+
 // src/utils/ipc.js
 
 export const ipc = {

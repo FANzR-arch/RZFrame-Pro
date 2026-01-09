@@ -1,3 +1,15 @@
+# RZFrame (Electron Edition)
+
+> **版本 Status**: 2026.01.09 (Refactoring)
+> **架构**: Electron + Vite + React (Vanilla JS Core)
+
+## 0. 核心原则 (Antigravity Rules)
+1. **分形文档**: 修改代码前必读/更新 `.folder.md`。
+2. **三段式交付**: MVP -> 理解 -> 决策。
+3. **安全优先**: 涉及文件系统操作需谨慎。
+
+---
+
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>

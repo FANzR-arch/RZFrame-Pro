@@ -1,3 +1,10 @@
+/*
+[INPUT]  : Camera Make string
+[OUTPUT] : Logo filename
+[POS]    : Configuration Data
+[DECISION]: Static mapping table for brand normalization.
+*/
+
 // 品牌 LOGO 映射配置
 export const brandConfigs = {
     // Brand name (lowercase) -> filename in assets/logos (without extension)

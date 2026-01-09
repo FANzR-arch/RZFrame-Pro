@@ -1,4 +1,12 @@
 {
+  "name": "rzframe-workspace-root",
+  "version": "1.0.0",
+  "description": "Workspace root for RZFrame project",
+  "scripts": {
+    "start": "cd RZFrame-Electron && npm start",
+    "dev": "cd RZFrame-Electron && npm run dev",
+    "install-all": "cd RZFrame-Electron && npm install"
+  },
   "dependencies": {
     "electron-store": "^11.0.2"
   }
