@@ -183,7 +183,20 @@ export function applySettingsToAll() {
     state.images.forEach((img, idx) => {
         if (idx === state.currentIndex) return;
         const newConfig = JSON.parse(JSON.stringify(sourceConfig));
-        newConfig.logo.img = sourceConfig.logo.img;
+
+        // Smart Logo Handling (Fix: Don't overwrite brand logos)
+        const sourceImg = state.images[state.currentIndex];
+        // Identify if source is using its auto-detected brand logo
+        const sourceUsingAuto = sourceImg.autoLogo && (sourceConfig.logo.img === sourceImg.autoLogo);
+
+        if (sourceUsingAuto && img.autoLogo) {
+            // If source is using auto-logo, let the target use ITS OWN auto-logo but with source's sizing/style
+            newConfig.logo.img = img.autoLogo;
+        } else {
+            // Otherwise (Custom logo or no logo), copy the source's logo image (e.g. Watermark)
+            newConfig.logo.img = sourceConfig.logo.img;
+        }
+
         img.config = newConfig;
     });
 

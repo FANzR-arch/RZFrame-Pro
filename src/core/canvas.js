@@ -186,9 +186,13 @@ function drawInfoBar(ctx, layout, metaData, config, userEdit) {
     if (config.logo.useImage && config.logo.img) {
         const logo = config.logo.img;
         const scale = config.logo.scale;
-        const maxLogoH = baseSize * 2.5;
-        let drawH = Math.round(baseSize * 2 * scale);
-        if (drawH > maxLogoH) drawH = maxLogoH;
+
+        // REMOVED: maxLogoH limit to allow full user control
+        // const maxLogoH = baseSize * 2.5; 
+
+        const drawH = Math.round(baseSize * 2 * scale);
+        // if (drawH > maxLogoH) drawH = maxLogoH;
+
         const drawW = Math.round(drawH * (logo.width / logo.height));
         const logoY = Math.round(baseY + lyOffset - drawH * 0.6);
         let drawX = lx;
@@ -205,17 +209,19 @@ function drawInfoBar(ctx, layout, metaData, config, userEdit) {
         ctx.fillStyle = subCol;
         ctx.font = `700 ${Math.round(baseSize * 0.55)}px '${config.font}', sans-serif`;
         const textY = logoY + drawH + (baseSize * 0.5);
-        ctx.fillText(userEdit.model.toUpperCase(), lx, textY);
+        const modelText = userEdit.model || ''; // Safe fallback
+        ctx.fillText(modelText.toUpperCase(), lx, textY);
     } else {
         // Text Make
         ctx.fillStyle = txtCol;
         ctx.font = `900 ${Math.round(baseSize * 1.5)}px 'Cinzel', serif`;
-        ctx.fillText(userEdit.make.toUpperCase(), lx, Math.round(baseY + lyOffset - baseSize * 0.4));
+        const makeText = userEdit.make || ''; // Safe fallback
+        ctx.fillText(makeText.toUpperCase(), lx, Math.round(baseY + lyOffset - baseSize * 0.4));
 
         // Text Model
         ctx.fillStyle = subCol;
         ctx.font = `600 ${Math.round(baseSize * 0.6)}px '${config.font}', sans-serif`;
-        ctx.fillText(userEdit.model, lx, Math.round(baseY + lyOffset + baseSize * 0.8));
+        ctx.fillText(userEdit.model || '', lx, Math.round(baseY + lyOffset + baseSize * 0.8));
     }
 
     // DRAW RIGHT (Params)

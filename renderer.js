@@ -235,25 +235,34 @@ function syncUIWithConfig(config) {
     else cropControls.classList.remove('hidden');
 
     LogoManager.toggleBrandMode(config.logo.useImage ? 'image' : 'text');
+
+    // Sync Font Color
+    const colorPicker = document.getElementById('fontColorPicker');
+    if (config.fontColor && config.fontColor.startsWith('#')) {
+        if (colorPicker) colorPicker.value = config.fontColor;
+    }
 }
 
 function syncMetaDisplay(d) {
     const ids = ['make', 'model', 'lens', 'focal', 'aperture', 'shutter', 'iso', 'date'];
-    ids.forEach(k => { const el = document.getElementById(`inp-${k}`); if (el) el.value = d.userEdit[k]; });
+    ids.forEach(k => {
+        const el = document.getElementById(`inp-${k}`);
+        if (el) el.value = d.userEdit[k] || '';
+    });
 
-    document.getElementById('meta-filename').innerText = d.metaDisplay.filename;
-    document.getElementById('meta-filesize').innerText = d.metaDisplay.filesize;
-    document.getElementById('meta-dim').innerText = d.metaDisplay.dimensions;
-    document.getElementById('meta-make').innerText = d.metaDisplay.make;
-    document.getElementById('meta-model').innerText = d.metaDisplay.model;
-    document.getElementById('meta-lens').innerText = d.metaDisplay.lens;
-    const ms = document.getElementById('meta-software'); if (ms) ms.innerText = d.metaDisplay.software;
-    document.getElementById('meta-focal').innerText = d.metaDisplay.focal;
-    document.getElementById('meta-aperture').innerText = d.metaDisplay.aperture;
-    document.getElementById('meta-shutter').innerText = d.metaDisplay.shutter;
-    document.getElementById('meta-iso').innerText = d.metaDisplay.iso;
-    const mf = document.getElementById('meta-flash'); if (mf) mf.innerText = `Flash: ${d.metaDisplay.flash}`;
-    const md = document.getElementById('meta-date'); if (md) md.innerText = `Date: ${d.metaDisplay.date}`;
+    document.getElementById('meta-filename').innerText = d.metaDisplay.filename || '--';
+    document.getElementById('meta-filesize').innerText = d.metaDisplay.filesize || '--';
+    document.getElementById('meta-dim').innerText = d.metaDisplay.dimensions || '--';
+    document.getElementById('meta-make').innerText = d.metaDisplay.make || '--';
+    document.getElementById('meta-model').innerText = d.metaDisplay.model || '--';
+    document.getElementById('meta-lens').innerText = d.metaDisplay.lens || '--';
+    const ms = document.getElementById('meta-software'); if (ms) ms.innerText = d.metaDisplay.software || '--';
+    document.getElementById('meta-focal').innerText = d.metaDisplay.focal || '--';
+    document.getElementById('meta-aperture').innerText = d.metaDisplay.aperture || '--';
+    document.getElementById('meta-shutter').innerText = d.metaDisplay.shutter || '--';
+    document.getElementById('meta-iso').innerText = d.metaDisplay.iso || '--';
+    const mf = document.getElementById('meta-flash'); if (mf) mf.innerText = d.metaDisplay.flash ? `Flash: ${d.metaDisplay.flash}` : 'Flash: --';
+    const md = document.getElementById('meta-date'); if (md) md.innerText = d.metaDisplay.date ? `Date: ${d.metaDisplay.date}` : 'Date: --';
     document.getElementById('exportFilename').value = "";
 }
 
@@ -371,12 +380,26 @@ async function loadSystemFonts() {
     if (!isElectron()) return;
     try {
         const fonts = await ipc.invoke('query-local-fonts');
-        if (!fonts) return;
-        const uniqueFonts = [...new Set(fonts.map(f => f.family))].sort();
+        if (!fonts || !Array.isArray(fonts)) return;
+
+        // Fonts are already deduplicated and sorted in main process now
         const select = document.getElementById('fontSelector');
+
+        // Keep first 3 static options (Default, Serif, Mono)
+        // Check if separator exists, if not add it
+        // Simpler: Cleart everything after index 2
         while (select.options.length > 3) { select.remove(3); }
+
         const sep = document.createElement('option'); sep.disabled = true; sep.text = "--- System Fonts ---"; select.add(sep);
-        uniqueFonts.forEach(font => { const opt = document.createElement('option'); opt.value = font; opt.text = font; select.add(opt); });
+
+        fonts.forEach(fontObj => {
+            const opt = document.createElement('option');
+            opt.value = fontObj.family;
+            opt.text = fontObj.family;
+            // Fallback font logic is handled in CSS/Canvas, here we just select the name.
+            select.add(opt);
+        });
+
         const customOpt = document.createElement('option'); customOpt.value = "custom"; customOpt.text = "Custom Font..."; customOpt.setAttribute('data-i18n', 'fontCustom'); select.add(customOpt);
     } catch (err) { console.error("Font error:", err); }
 }

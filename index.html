@@ -238,9 +238,17 @@
                                     class="text-[9px] px-2 rounded hover:bg-black/10 dark:hover:bg-white/10 transition font-bold opacity-70"
                                     data-i18n="auto">Auto</button>
                                 <button onclick="RZApp.updateConfig('fontColor', 'black')"
-                                    class="w-6 h-6 rounded-full bg-black border border-zinc-300 shadow-sm hover:scale-110 transition"></button>
+                                    class="w-6 h-6 rounded-full bg-black border border-zinc-300 shadow-sm hover:scale-110 transition"
+                                    title="Black"></button>
                                 <button onclick="RZApp.updateConfig('fontColor', 'white')"
-                                    class="w-6 h-6 rounded-full bg-white border border-zinc-600 shadow-sm hover:scale-110 transition"></button>
+                                    class="w-6 h-6 rounded-full bg-white border border-zinc-600 shadow-sm hover:scale-110 transition"
+                                    title="White"></button>
+                                <div class="relative w-6 h-6 rounded-full overflow-hidden border border-zinc-300 shadow-sm hover:scale-110 transition cursor-pointer"
+                                    title="Custom Color">
+                                    <input type="color" id="fontColorPicker"
+                                        class="absolute -top-2 -left-2 w-10 h-10 p-0 border-0 cursor-pointer"
+                                        oninput="RZApp.updateConfig('fontColor', this.value)">
+                                </div>
                             </div>
                         </div>
                     </div>
