@@ -26,7 +26,7 @@ function createWindow() {
     frame: false, // 无边框模式
     transparent: true, // 允许透明背景
     backgroundColor: '#00000000', // 初始完全透明
-    icon: path.join(__dirname, 'assets/icon.png'), // 设置任务栏图标
+    icon: path.join(__dirname, 'assets/icon.ico'), // 设置任务栏图标
     webPreferences: {
       nodeIntegration: false, // 禁用 Node.js 集成 (安全)
       contextIsolation: true, // 开启上下文隔离 (安全)
@@ -116,12 +116,20 @@ app.whenReady().then(() => {
   protocol.registerFileProtocol('rz-local', (request, callback) => {
     let url = request.url.replace('rz-local://', '');
     try {
+      url = decodeURIComponent(url);
+
       // Fix for Windows: /C:/Path -> C:/Path
       if (process.platform === 'win32' && /^\/[a-zA-Z]:/.test(url)) {
         url = url.slice(1);
       }
+      // Handle relative paths (e.g., /assets/logos/...) - treat as relative to app root
+      else if (process.platform === 'win32' && !/^[a-zA-Z]:/.test(url)) {
+        if (url.startsWith('/') || url.startsWith('\\')) url = url.slice(1);
+        url = path.join(__dirname, url);
+      }
+
       // Decode and normalize path
-      const filePath = path.normalize(decodeURIComponent(url));
+      const filePath = path.normalize(url);
       return callback({ path: filePath });
     } catch (error) {
       console.error('Protocol Error:', error);
@@ -163,60 +171,74 @@ ipcMain.on('log-message', (event, logData) => {
 
 
 // 2. 获取系统字体
-// 2. 获取系统字体 (Robust PowerShell Fallback)
+// 2. 获取系统字体 (Robust PowerShell Fallback - UTF8 JSON Fixed)
 ipcMain.handle('query-local-fonts', async () => {
-  try {
+  return new Promise((resolve) => {
     const { exec } = require('child_process');
-    return new Promise((resolve) => {
-      // Use PowerShell to list fonts from registry which is cleaner, or just list file names.
-      // Listing registry is better to get actual family names.
-      const cmd = `powershell -Command "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' | Select-Object -Property *"`;
 
-      exec(cmd, { maxBuffer: 1024 * 1024 * 5 }, (error, stdout, stderr) => {
-        if (error) {
-          console.error("Font PS error:", error);
-          resolve([]);
-          return;
-        }
+    // Command explanation:
+    // 1. [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; -> Force UTF8 output for non-ASCII chars (Chinese/Japanese)
+    // 2. Get-ItemProperty ... | Select-Object -> Get font registry entries
+    // 3. ConvertTo-Json -> Output as JSON string
+    const psCommand = `powershell -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' | Select-Object -Property * -ExcludeProperty PSPath,PSPrentPath,PSChildName,PSDrive,PSProvider | ConvertTo-Json -Depth 1 -Compress"`;
 
-        const fonts = [];
-        const lines = stdout.split('\n');
-        // Parse the registry output. Keys are font names, values are filenames.
-        // We just want keys that look like font names.
-        // PowerShell output format for Select-Object * is header/value pairs or list.
-        // Better command for simple parsing:
+    exec(psCommand, { maxBuffer: 1024 * 1024 * 10, encoding: 'utf8' }, (err, stdout, stderr) => {
+      if (err) {
+        console.error("Font PS error:", err);
+        resolve([]);
+        return;
+      }
 
-        // Simpler approach: Just return specific common fonts to verify it works, 
-        // OR better: scan the Fonts folder for names (less accurate family names).
+      try {
+        // PowerShell might wrap JSON in standard array if multiple, or object if single.
+        // It might also output some noise? Usually ConvertTo-Json is clean.
+        let jsonStr = stdout.trim();
+        if (!jsonStr) { resolve([]); return; }
 
-        // BEST APPROACH: "Get-ChildItem C:\Windows\Fonts" and parse file names is easiest but ugly.
-        // Registry approach with JSON output is best.
-      });
+        const data = JSON.parse(jsonStr);
+        // Normalize to array
+        const fontList = Array.isArray(data) ? data : [data];
 
-      // Synchronous valid alternative for stability:
-      // Just hardcode common Windows, Mac, Linux system fonts? No, user wants THEIR fonts.
+        const validFonts = [];
 
-      // Retry with JSON output for reliability
-      const psCommand = `powershell -Command "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' | ConvertTo-Json"`;
-      exec(psCommand, { maxBuffer: 1024 * 1024 * 10 }, (err, stdout) => {
-        if (err) { resolve([]); return; }
-        try {
-          const data = JSON.parse(stdout);
-          const fontNames = Object.keys(data).filter(k => k !== 'PSPath' && k !== 'PSPrentPath' && k !== 'PSChildName' && k !== 'PSDrive' && k !== 'PSProvider');
-          // Clean up names (remove " (TrueType)")
-          const cleanFonts = fontNames.map(f => f.replace(/ \(TrueType\)/g, '').replace(/ \(OpenType\)/g, '').replace(/ \(All Res\)/g, ''));
-          // Deduplicate and sort
-          const unique = [...new Set(cleanFonts)].sort();
-          resolve(unique.map(f => ({ family: f })));
-        } catch (parseErr) {
-          resolve([]);
-        }
-      });
+        fontList.forEach(item => {
+          // Registry keys in 'Fonts' are: "Font Name (TrueType)" : "Filename.ttf"
+          // The JSON object keys are dynamic (the font names themselves are properties?? No.)
+          // Wait, Get-ItemProperty on the folder returns ONE object with MANY properties (each property is a font).
+          // SO 'data' is usually a single object where keys are font names.
+
+          Object.keys(item).forEach(key => {
+            // Filter out system properties if any remained (Select-Object * -Exclude... handles most)
+            // Filter out standard PS properties just in case
+            if (['PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider'].includes(key)) return;
+
+            // Key is the font name (e.g. "Microsoft YaHei & Microsoft YaHei UI (TrueType)")
+            // Value is the filename (e.g. "msyh.ttc")
+
+            let fontName = key;
+            // Cleanup: remove (TrueType), (OpenType), (All Res)
+            fontName = fontName.replace(/\s*\(TrueType\)/gi, '')
+              .replace(/\s*\(OpenType\)/gi, '')
+              .replace(/\s*\(All Res\)/gi, '')
+              .trim();
+
+            if (fontName && fontName.length > 0) {
+              validFonts.push({ family: fontName, file: item[key] });
+            }
+          });
+        });
+
+        // Deduplicate
+        const unique = [...new Set(validFonts.map(f => f.family))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+
+        resolve(unique.map(f => ({ family: f })));
+      } catch (parseErr) {
+        console.error("Font JSON parse error:", parseErr);
+        // Fallback: Empty list is better than crash
+        resolve([]);
+      }
     });
-  } catch (e) {
-    console.error("Font load error:", e);
-    return [];
-  }
+  });
 });
 
 // --- IO Security: Allowed Paths Whitelist ---
@@ -288,21 +310,75 @@ ipcMain.handle('save-file-dialog', async (event, dataUrl, defaultName) => {
 });
 
 ipcMain.handle('analyze-exif', async (event, filePath) => {
+  // DEBUG: Inspect path
+  const logDir = getLogDir();
+  const logPath = path.join(logDir, 'app.log');
+
   try {
+    const exists = fs.existsSync(filePath);
+    const stat = exists ? fs.statSync(filePath) : null;
+    const debugMsg = `[${new Date().toISOString()}] [DEBUG] Analyze Request: "${filePath}" Exists: ${exists} Size: ${stat ? stat.size : 'N/A'}\n`;
+    fs.appendFile(logPath, debugMsg, () => { });
+
+    if (!exists) {
+      throw new Error(`File detection failed: ${filePath}`);
+    }
+
     const tags = await exiftool.read(filePath);
 
-    // 1. Priority: LensID > LensModel
-    // Check if they exist and are valid strings (not just "----")
+    // DEBUG: Log Tags
+    const debugTags = {
+      Make: tags.Make,
+      Model: tags.Model,
+      Lens: tags.Lens,
+      LensID: tags.LensID,
+      LensModel: tags.LensModel,
+      LensInfo: tags.LensInfo,
+      KeyCount: Object.keys(tags).length
+    };
+    const succMsg = `[${new Date().toISOString()}] [DEBUG] ExifTool Success. Keys: ${Object.keys(tags).join(',')} Data: ${JSON.stringify(debugTags)}\n`;
+    fs.appendFile(logPath, succMsg, () => { });
+
+    // 1. Priority: LensID > LensModel > LensType > Lens
     let lensName = null;
+
+
+
     if (tags.LensID && tags.LensID !== '----' && tags.LensID.length > 5) {
       lensName = tags.LensID;
     } else if (tags.LensModel && tags.LensModel !== '----' && tags.LensModel.length > 5) {
       lensName = tags.LensModel;
     } else if (tags.LensType && tags.LensType !== '----' && tags.LensType.length > 5) {
       lensName = tags.LensType;
+    } else if (tags.Lens && tags.Lens !== '----' && tags.Lens.length > 5) {
+      lensName = tags.Lens;
     }
 
-    if (lensName) return { lensName, tags };
+
+
+    // Helper to extract safe tags
+    const getSafeTags = (t) => ({
+      Make: t.Make,
+      Model: t.Model,
+      Lens: t.Lens,
+      LensID: t.LensID,
+      LensModel: t.LensModel,
+      LensInfo: t.LensInfo,
+      ISO: t.ISO,
+      ISOSpeedRatings: t.ISOSpeedRatings,
+      FNumber: t.FNumber,
+      ExposureTime: t.ExposureTime,
+      FocalLength: t.FocalLength,
+      DateTimeOriginal: t.DateTimeOriginal,
+      DateTime: t.DateTime,
+      CreateDate: t.CreateDate,
+      Software: t.Software,
+      Flash: t.Flash
+    });
+
+    if (lensName) {
+      return { lensName, tags: getSafeTags(tags) };
+    }
 
     // 2. Heuristic Regex Search
     const stringValues = Object.values(tags).filter(v => typeof v === 'string');
@@ -316,17 +392,21 @@ ipcMain.handle('analyze-exif', async (event, filePath) => {
 
       if (hasAperture || hasRange) {
         // Exclusion checks:
-        // Exclude pure sensor size or simple focal length (e.g. "35 mm", "4.5 mm", "36x24 mm")
         if (/^\d+(\.\d+)?\s*mm$/i.test(val)) continue;
         if (/^\d+x\d+\s*mm$/i.test(val)) continue;
 
-        return { lensName: val, tags };
+        return { lensName: val, tags: getSafeTags(tags) };
       }
     }
 
-    return { lensName: null, tags };
+    return { lensName: null, tags: getSafeTags(tags) };
   } catch (err) {
     console.error('Exiftool error:', err);
+
+    // Log ERROR to file
+    const logMsg = `[${new Date().toISOString()}] [ERROR] ExifTool Failed: ${filePath} Error: ${err.message}\n`;
+    fs.appendFile(path.join(getLogDir(), 'app.log'), logMsg, () => { });
+
     return { error: err.message };
   }
 });

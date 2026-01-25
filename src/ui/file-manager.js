@@ -177,14 +177,25 @@ async function processNewImage(file) {
                     const make = (tags.Make || 'Unknown').replace(/\0/g, '');
                     const model = (tags.Model || 'Unknown').replace(/\0/g, '');
 
+                    let dateStr = '--'; // Declare dateStr variable
                     const rawDate = tags.DateTimeOriginal || tags.DateTime || tags.CreateDate;
-                    let dateStr = '--';
                     if (rawDate) {
                         if (typeof rawDate === 'object' && rawDate.year) {
                             const pad = (n) => n.toString().padStart(2, '0');
-                            dateStr = `${rawDate.year}:${pad(rawDate.month)}:${pad(rawDate.day)}`;
+                            dateStr = `${rawDate.year}.${pad(rawDate.month)}.${pad(rawDate.day)}`;
+                            if (rawDate.hour !== undefined) {
+                                dateStr += ` ${pad(rawDate.hour)}:${pad(rawDate.minute)}:${pad(rawDate.second)}`;
+                            }
                         } else {
-                            dateStr = String(rawDate).split(' ')[0].replace(/:/g, '.');
+                            // Try to parse string format "YYYY:MM:DD HH:MM:SS"
+                            // If it matches standard Exif format
+                            const parts = String(rawDate).match(/^(\d{4})[:\-](\d{2})[:\-](\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+                            if (parts) {
+                                dateStr = `${parts[1]}.${parts[2]}.${parts[3]} ${parts[4]}:${parts[5]}:${parts[6]}`;
+                            } else {
+                                // Fallback to old behavior (YY:MM:DD)
+                                dateStr = String(rawDate).split(' ')[0].replace(/:/g, '.');
+                            }
                         }
                     }
 
@@ -206,37 +217,122 @@ async function processNewImage(file) {
                         flash: tags.Flash === undefined ? '--' : (tags.Flash & 1 ? 'Fired' : 'Off')
                     };
 
-                    let modelClean = imgData.metaDisplay.model;
+                    let modelClean = imgData.metaDisplay.model || '';
                     if (modelClean.includes('ILCE-7RM2')) modelClean = 'Sony A7R II';
                     if (modelClean.includes('ILCE-7RM5')) modelClean = 'Sony A7R V';
-
-                    imgData.userEdit = {
-                        make: imgData.metaDisplay.make,
-                        model: modelClean,
-                        lens: imgData.metaDisplay.lens,
-                        focal: imgData.metaDisplay.focal,
-                        aperture: imgData.metaDisplay.aperture,
-                        shutter: imgData.metaDisplay.shutter,
-                        iso: imgData.metaDisplay.iso,
-                        date: imgData.metaDisplay.date
-                    };
-
-                    const autoLogo = await tryLoadBrandLogo(imgData.userEdit.make);
-                    if (autoLogo) {
-                        imgData.autoLogo = autoLogo;
-                        imgData.config.logo.img = autoLogo;
-                        imgData.config.logo.useImage = true;
-                    }
 
                 } catch (e) {
                     console.error("Exif parsing failed", e);
                 }
             }
 
-            state.images.push(imgData);
+            // Ensure userEdit is populated
+            const safeMeta = imgData.metaDisplay || {};
+            imgData.userEdit = {
+                make: safeMeta.make || '',
+                model: safeMeta.model || '',
+                lens: safeMeta.lens || '',
+                focal: safeMeta.focal || '',
+                aperture: safeMeta.aperture || '',
+                shutter: safeMeta.shutter || '',
+                iso: safeMeta.iso || '',
+                date: safeMeta.date || ''
+            };
 
-            if (!isElectron()) URL.revokeObjectURL(srcPath);
-            img.src = "";
+            // FALLBACK: If IPC Exif failed (empty make), try Frontend EXIF.js
+            if ((!imgData.userEdit.make || imgData.userEdit.make === 'Unknown') && window.EXIF) {
+                console.log("Attempting Frontend EXIF fallback...");
+                await new Promise(resolveExif => {
+                    EXIF.getData(file, function () {
+                        const tags = EXIF.getAllTags(this);
+                        if (tags && tags.Make) {
+                            console.log("Frontend EXIF found:", tags);
+
+                            // DEBUG: Log all tags to file to inspect Lens info visibility
+                            try {
+                                ipc.send('log-message', {
+                                    level: 'DEBUG',
+                                    message: 'Frontend EXIF Tags:',
+                                    data: {
+                                        Make: tags.Make,
+                                        Model: tags.Model,
+                                        Lens: tags.Lens,
+                                        LensModel: tags.LensModel,
+                                        LensInfo: tags.LensInfo,
+                                        // Dump a few raw keys to see if we missed something
+                                        keys: Object.keys(tags)
+                                    }
+                                });
+                            } catch (e) { }
+
+                            const cleanStr = (s) => String(s || '').replace(/\0/g, '').trim();
+
+                            const make = cleanStr(tags.Make);
+                            const model = cleanStr(tags.Model);
+                            const iso = tags.ISOSpeedRatings || tags.ISO || '';
+                            const fNum = tags.FNumber ? `f/${tags.FNumber}` : '';
+                            const focal = tags.FocalLength ? `${Math.round(tags.FocalLength)}mm` : '';
+                            const shutter = tags.ExposureTime ? (tags.ExposureTime < 1 ? `1/${Math.round(1 / tags.ExposureTime)}` : `${tags.ExposureTime}"`) : '';
+
+                            // Try to get Lens info (often available in newer exif.js versions or some files)
+                            // Note: standard EXIF doesn't always have LensModel, it might be inside MakerNote which exif.js has limited support for.
+                            const lens = cleanStr(tags.LensModel) || cleanStr(tags.LensInfo) || cleanStr(tags.Lens) || '';
+                            // Only update lens if frontend found valid data AND backend didn't already provide it
+                            if (lens && (!imgData.metaDisplay.lens || imgData.metaDisplay.lens === 'Lens Info')) {
+                                imgData.metaDisplay.lens = lens;
+                                imgData.userEdit.lens = lens;
+                            }
+
+                            // Date Format: "YYYY:MM:DD HH:MM:SS" -> "YYYY.MM.DD HH:MM:SS"
+                            let dateStr = cleanStr(tags.DateTimeOriginal || tags.DateTime);
+                            if (dateStr) {
+                                const parts = dateStr.match(/^(\d{4})[:\-](\d{2})[:\-](\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+                                if (parts) dateStr = `${parts[1]}.${parts[2]}.${parts[3]} ${parts[4]}:${parts[5]}:${parts[6]}`;
+                                else dateStr = dateStr.replace(/:/g, '.').split(' ')[0];
+                            }
+
+                            // Update metaDisplay - only override if backend data is missing
+                            if (make && !imgData.metaDisplay.make) imgData.metaDisplay.make = make;
+                            if (model && !imgData.metaDisplay.model) imgData.metaDisplay.model = model;
+                            if (iso && !imgData.metaDisplay.iso) imgData.metaDisplay.iso = iso;
+                            if (fNum && !imgData.metaDisplay.aperture) imgData.metaDisplay.aperture = fNum;
+                            if (focal && !imgData.metaDisplay.focal) imgData.metaDisplay.focal = focal;
+                            if (shutter && !imgData.metaDisplay.shutter) imgData.metaDisplay.shutter = shutter;
+                            if (dateStr && !imgData.metaDisplay.date) imgData.metaDisplay.date = dateStr;
+
+                            // Update userEdit - only override if backend data is missing
+                            if (make && !imgData.userEdit.make) imgData.userEdit.make = make;
+                            if (model && !imgData.userEdit.model) imgData.userEdit.model = model;
+                            if (iso && !imgData.userEdit.iso) imgData.userEdit.iso = iso;
+                            if (fNum && !imgData.userEdit.aperture) imgData.userEdit.aperture = fNum;
+                            if (focal && !imgData.userEdit.focal) imgData.userEdit.focal = focal;
+                            if (shutter && !imgData.userEdit.shutter) imgData.userEdit.shutter = shutter;
+                            if (dateStr && !imgData.userEdit.date) imgData.userEdit.date = dateStr;
+
+                            // Sony Model Clean Fix
+                            if (model.includes('ILCE-7RM2')) imgData.userEdit.model = 'Sony A7R II';
+                            if (model.includes('ILCE-7RM5')) imgData.userEdit.model = 'Sony A7R V';
+                        }
+                        resolveExif();
+                    });
+                });
+            }
+
+            // Auto Logo
+            if (isElectron()) {
+                try {
+                    const autoLogo = await tryLoadBrandLogo(imgData.userEdit.make);
+                    if (autoLogo) {
+                        imgData.autoLogo = autoLogo;
+                        imgData.config.logo.img = autoLogo;
+                        imgData.config.logo.useImage = true;
+                    }
+                } catch (logoErr) {
+                    console.error("Logo load failed", logoErr);
+                }
+            }
+
+            state.images.push(imgData);
 
             resolve();
         };
