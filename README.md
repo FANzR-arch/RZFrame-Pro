@@ -43,7 +43,7 @@ npm run dist
 - **Bridge**: `preload.js` - 安全的 IPC 通信桥梁。
 
 ## 4. 文档 (Documentation)
-- [PRD (产品需求文档)](doc/PRD.md)
+- [PRD (产品需求文档)](docs/PRD.md)
 - [目录结构说明](.folder.md)
 
 ## 5. 版权 (License)
