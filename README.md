@@ -1,7 +1,7 @@
 # RZFrame (Electron Edition)
 
 > **版本 Status**: 2.7.2 (Stable / Governance Complete)
-> **架构**: Electron + Vite + React (Vanilla JS Core)
+> **架构**: Electron + Vanilla JS (Native DOM)
 
 ## 0. 核心原则 (Antigravity Rules)
 1. **分形文档**: 修改代码前必读/更新 `.folder.md`。
@@ -10,41 +10,63 @@
 
 ---
 
-## 1. 项目简介 (Project Overview)
-**RZFrame Workstation Pro** 是一款基于 Electron 的专业 EXIF 边框生成工具。它专为摄影师设计，支持读取照片元数据（光圈、快门、ISO、镜头等），并根据预设模版生成极具美感的展示图。
+## 1. 下载与使用 (For Photographers)
+**无需懂代码，开箱即用。**
+
+RZFrame 专为追求极致画质的摄影师设计，所有照片处理均在**本地电脑**完成，确保您的原片绝对安全。
+
+### 📥 获取软件
+请访问 [Releases 页面](https://github.com/your-repo/RZFrame/releases) 下载最新版本的安装包：
+- **Windows**: 下载 `.exe` 安装包
+- **macOS**: 下载 `.dmg` 安装包 (暂未发布)
+
+### 🚀 首次使用
+1. 安装并运行 RZFrame。
+2. 将照片直接**拖拽**到窗口中。
+3. 选择右侧预设的 "Leica 经典" 或 "Fujifilm 胶片" 模版。
+4. 点击 "导出" 即可生成带EXIF参数的展示图。
+
+---
+
+## 2. 项目简介 (Project Overview)
+**RZFrame Workstation Pro** 是一款基于 Electron 的专业 EXIF 边框生成工具。
 
 ### 核心特性
-- **本地化**: 所有处理均在本地完成，无隐私风险。
-- **专业级 Exif 解析**: 基于 `exiftool-vendored`。
-- **高度定制**: 支持字体、边框、Logo、圆角等多种参数调整。
-- **批量处理**: 支持拖拽多图上传与批量导出。
+- **纯本地化**: 0上传，保护隐私。
+- **专业级 Exif 解析**: 基于 `exiftool-vendored`，支持光圈、快门、ISO、镜头型号等。
+- **高度定制**: 支持自定义字体、边框颜色、Logo、圆角。
+- **批量并发**: 支持多图拖拽与队列导出。
 
-## 2. 快速开始 (Quick Start)
+---
+
+## 3. 开发者指南 (For Developers)
+如果您希望贡献代码或进行二次开发，请参考以下步骤。
 
 ### 环境要求
 - Node.js (v18+)
 - NPM / Yarn
 
-### 安装与运行
+### 开发流程
 ```bash
 # 1. 安装依赖
 npm install
 
-# 2. 启动开发环境
+# 2. 启动开发环境 (Hot Reload)
 npm run dev
 
-# 3. 打包构建
+# 3. 打包构建 (生成 .exe/.dmg)
 npm run dist
 ```
 
-## 3. 架构说明 (Architecture)
-- **Main Process**: `main.js` - 负责窗口管理、文件 I/O、ExifTool 进程管理。
-- **Renderer Process**: `renderer.js` - 负责 UI 渲染、Canvas 绘图、状态管理 (Vanilla JS + Tailwind)。
-- **Bridge**: `preload.js` - 安全的 IPC 通信桥梁。
+## 4. 架构说明 (Architecture)
+- **Main Process**: `main.js` - 窗口管理、Native I/O、ExifTool 进程守护。
+- **Renderer Process**: `renderer.js` - UI 渲染、Canvas 绘图、状态管理 (Vanilla JS)。
+- **Bridge**: `preload.js` - 仅暴露必要的 IPC 接口 (Context Isolation enabled)。
 
-## 4. 文档 (Documentation)
+## 5. 文档 (Documentation)
 - [PRD (产品需求文档)](docs/PRD.md)
+- [**PM 实战训练营 (60天计划)**](docs/PM_Practice/README.md) 👈 **New!**
 - [目录结构说明](.folder.md)
 
-## 5. 版权 (License)
+## 6. 版权 (License)
 MIT
