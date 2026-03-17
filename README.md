@@ -60,14 +60,10 @@ npm run dist
 
 ---
 
-## 📖 知识库与文档
-
-- 📚 [**RAG PM 知识库**](./docs/rag_pm_kb_rzframe/README.md)：关于项目治理与产品逻辑的深度文档。
-- 🏗️ [**PRD 文档**](./docs/PRD.md)：核心功能设计草案。
-- 📝 [**更新日志**](./CHANGELOG.md)：详细的版本演进记录。
-
----
-
 ## ⚖️ 协议与声明
 - **核心原则 (Antigravity Rules)**：局部修改必更新文档，保持系统一致性。
 - **License**: MIT
+
+## 🖼️ 界面展示
+![1773725287225](image/README/1773725287225.png)
+![1773725318489](image/README/1773725318489.png)
