@@ -1,73 +1,73 @@
 # 画外 (RZFrame) - 极简摄影边框工具
 
-> **版本 Status**: 2.7.3 (Stable / Governance Complete)
-> **架构**: Electron + Vanilla JS (Native DOM)
-
-## 0. 核心原则 (Antigravity Rules)
-1. **分形文档**: 修改代码前必读/更新 `.folder.md`。
-2. **三段式交付**: MVP -> 理解 -> 决策。
-3. **安全优先**: 涉及文件系统操作需谨慎。
+> **专业级 EXIF 边框生成方案**  
+> **Status**: `v2.7.3 Stable` | **Stack**: `Electron` + `Vanilla JS`
 
 ---
 
-## 1. 下载与使用 (For Photographers)
-**无需懂代码，开箱即用。**
-
-RZFrame 专为追求极致画质的摄影师设计，所有照片处理均在**本地电脑**完成，确保您的原片绝对安全。
-
-### 📥 获取软件
-请访问 [Releases 页面](https://github.com/FANzR-arch/RZFrame-Pro/releases) 下载最新版本的安装包：
-- **Windows**: 下载 `.exe` 安装包
-- **macOS**: 下载 `.dmg` 安装包 (暂未发布)
-
-### 🚀 首次使用
-1. 安装并运行 RZFrame。
-2. 将照片直接**拖拽**到窗口中。
-3. 选择右侧预设的 "Leica 经典" 或 "Fujifilm 胶片" 模版。
-4. 点击 "导出" 即可生成带EXIF参数的展示图。
+## 📸 项目愿景
+**画外 (RZFrame)** 是一款为摄影师量身定制的桌面工具，旨在为作品提供极致纯净、信息丰富的 EXIF 边框。我们坚持 **“纯本地、零上传”**，确保您的原片数据与隐私安全。
 
 ---
 
-## 2. 项目简介 (Project Overview)
-**画外 (RZFrame)** 是一款基于 Electron 的专业 EXIF 边框生成工具。
+## ✨ 核心特性
 
-### 核心特性
-- **纯本地化**: 0上传，保护隐私。
-- **专业级 Exif 解析**: 基于 `exiftool-vendored`，支持光圈、快门、ISO、镜头型号等。
-- **高度定制**: 支持自定义字体、边线粗细、Logo、圆角。
-- **智能 Logo 识别**: 自动匹配相机品牌 Logo，支持手动切换 (Black/White) 与自定义上传。
-- **批量并发**: 支持多图拖拽与队列导出。
+- 🛡️ **数据隐私**：所有照片处理、EXIF 读取均在本地完成，无网络上传。
+- 🔍 **专业级解析**：基于 `exiftool`，深度支持光圈、快门、ISO、焦距、镜头型号。
+- 🎨 **高度定制化**：
+  - 支持 **Leica/Fujifilm/Hasselblad** 等品牌 Logo 智能识别。
+  - 支持自定义字体、背景色、边框宽度及圆角设置。
+  - 提供 **Classic (经典)** / **Cinema (宽银幕)** / **Float (漂浮)** 多套模版。
+- 🚀 **批处理导出**：支持多张照片一键拖拽，高效并发导出。
+- 🖼️ **智能 Logo**：自动匹配品牌 Logo，支持黑白切换及用户自定义 Logo 库。
 
 ---
 
-## 3. 开发者指南 (For Developers)
-如果您希望贡献代码或进行二次开发，请参考以下步骤。
+## 📥 快速开始 (Photographers)
 
-### 环境要求
-- Node.js (v18+)
-- NPM / Yarn
+### 1. 下载安装
+前往 [GitHub Releases](https://github.com/FANzR-arch/RZFrame-Pro/releases) 下载最新版本的 Windows `.exe` 安装包。
+
+### 2. 使用步骤
+1. **拖拽**：将您的照片（JPG/PNG）直接拖入窗口。
+2. **选择**：在右侧面板选择心仪的预设模版。
+3. **导出**：点击“导出”，照片将保存至原文件夹下的 `RZFrame_Output`。
+
+---
+
+## 🛠️ 开发者指南 (Developers)
+
+### 环境依赖
+- **Node.js**: v18.0 或更高版本
+- **ExifTool**: 已内置于 `vendor` 目录，无需额外安装
 
 ### 开发流程
 ```bash
-# 1. 安装依赖
+# 安装依赖
 npm install
 
-# 2. 启动开发环境 (Hot Reload)
+# 进入开发模式 (带热更新)
 npm run dev
 
-# 3. 打包构建 (生成 .exe/.dmg)
+# 构建生产包 (生成安装程序)
 npm run dist
 ```
 
-## 4. 架构说明 (Architecture)
-- **Main Process**: `main.js` - 窗口管理、Native I/O、ExifTool 进程守护。
-- **Renderer Process**: `renderer.js` - UI 渲染、Canvas 绘图、状态管理 (Vanilla JS)。
-- **Bridge**: `preload.js` - 仅暴露必要的 IPC 接口 (Context Isolation enabled)。
+### 技术架构
+- **Main**: `main.js` - 处理本地 I/O、内核进程与窗口生命周期。
+- **Renderer**: `renderer.js` - 基于原生 Canvas 的渲染引擎，极致轻量。
+- **Bridge**: `preload.js` - 安全的 IPC 通信层。
 
-## 5. 文档 (Documentation)
-- [PRD (产品需求文档)](docs/PRD.md)
-- [**PM 实战训练营 (60天计划)**](docs/PM_Practice/README.md) 👈 **New!**
-- [目录结构说明](.folder.md)
+---
 
-## 6. 版权 (License)
-MIT
+## 📖 知识库与文档
+
+- 📚 [**RAG PM 知识库**](./docs/rag_pm_kb_rzframe/README.md)：关于项目治理与产品逻辑的深度文档。
+- 🏗️ [**PRD 文档**](./docs/PRD.md)：核心功能设计草案。
+- 📝 [**更新日志**](./CHANGELOG.md)：详细的版本演进记录。
+
+---
+
+## ⚖️ 协议与声明
+- **核心原则 (Antigravity Rules)**：局部修改必更新文档，保持系统一致性。
+- **License**: MIT
