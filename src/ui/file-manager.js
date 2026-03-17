@@ -19,20 +19,20 @@ export function setLogosPath(path) {
 // --- File Selection & Processing ---
 
 export async function handleFileSelect(event, selectImageCallback, updateFilmstripCallback) {
-    console.log("handleFileSelect triggered");
+
     const files = Array.from(event.target.files);
-    console.log("Files selected:", files.length);
+
     await processFiles(files, selectImageCallback, updateFilmstripCallback);
     event.target.value = ''; // Reset input
 }
 
 export async function processFiles(files, selectImageCallback, updateFilmstripCallback) {
     if (files.length === 0) return;
-    console.log("processFiles starting");
+
 
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
-        console.log("Showing overlay...");
+
         overlay.style.display = 'flex';
         overlay.style.opacity = '1';
         overlay.style.zIndex = '9999';
@@ -51,7 +51,7 @@ export async function processFiles(files, selectImageCallback, updateFilmstripCa
     await new Promise(resolve => {
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                console.log("UI updated, starting processing");
+
                 resolve();
             });
         });
@@ -62,7 +62,7 @@ export async function processFiles(files, selectImageCallback, updateFilmstripCa
 
     const processNext = async (index) => {
         if (index >= total) {
-            console.log("All files processed");
+
             if (state.currentIndex === -1 && state.images.length > 0) {
                 selectImageCallback(0);
             } else {
@@ -70,7 +70,7 @@ export async function processFiles(files, selectImageCallback, updateFilmstripCa
             }
 
             if (overlay) {
-                console.log("Hiding overlay");
+
                 overlay.style.opacity = '0';
                 overlay.style.pointerEvents = 'none';
                 setTimeout(() => {
@@ -171,8 +171,12 @@ async function processNewImage(file) {
             if (isElectron()) {
                 try {
                     const result = await ipc.invoke('analyze-exif', file.path);
-                    console.log("EXIF:", result);
+
                     const tags = result.tags || {};
+
+                    // SAVE RAW EXIF FOR LOGO MANAGER
+                    imgData.exif = tags;
+
                     const lensInfo = result.lensName || "Lens Info";
                     const make = (tags.Make || 'Unknown').replace(/\0/g, '');
                     const model = (tags.Model || 'Unknown').replace(/\0/g, '');
@@ -241,12 +245,15 @@ async function processNewImage(file) {
 
             // FALLBACK: If IPC Exif failed (empty make), try Frontend EXIF.js
             if ((!imgData.userEdit.make || imgData.userEdit.make === 'Unknown') && window.EXIF) {
-                console.log("Attempting Frontend EXIF fallback...");
+
                 await new Promise(resolveExif => {
                     EXIF.getData(file, function () {
                         const tags = EXIF.getAllTags(this);
                         if (tags && tags.Make) {
-                            console.log("Frontend EXIF found:", tags);
+
+
+                            // SAVE RAW EXIF FOR LOGO MANAGER
+                            imgData.exif = tags;
 
                             // DEBUG: Log all tags to file to inspect Lens info visibility
                             try {
@@ -318,14 +325,20 @@ async function processNewImage(file) {
                 });
             }
 
-            // Auto Logo
-            if (isElectron()) {
+            // Auto Logo - DELEGATE TO LOGO MANAGER
+            // This ensures we use the new fuzzy matching and multi-logo support
+            if (isElectron() && imgData.userEdit.make && window.LogoManager) {
+                // We mark this as NOT applied so selectImage will trigger autoMatchLogo
+                imgData.autoLogoApplied = false;
+            } else {
+                // Legacy / Web fallback
                 try {
                     const autoLogo = await tryLoadBrandLogo(imgData.userEdit.make);
                     if (autoLogo) {
                         imgData.autoLogo = autoLogo;
                         imgData.config.logo.img = autoLogo;
                         imgData.config.logo.useImage = true;
+                        imgData.autoLogoApplied = true;
                     }
                 } catch (logoErr) {
                     console.error("Logo load failed", logoErr);

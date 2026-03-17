@@ -9,6 +9,7 @@ import { state } from './state.js';
 import { getCanvas } from './canvas.js';
 import { ipc, isElectron } from '../utils/ipc.js';
 import { translations } from '../locales/translations.js';
+import { renderTemplateList } from './template-manager.js';
 
 export async function downloadImage() {
     if (state.currentIndex === -1) return;
@@ -111,14 +112,127 @@ export async function saveCurrentTemplate() {
         config: config
     };
 
-    state.savedTemplates.push(template);
-
     if (isElectron()) {
-        await ipc.invoke('template-save', template);
+        const result = await ipc.invoke('template-save', template);
+        if (!result || !result.success) {
+            alert(`Failed to save template: ${result?.error || 'Unknown error'}`);
+            return;
+        }
+        state.savedTemplates.push(template);
     } else {
+        state.savedTemplates.push(template);
         localStorage.setItem('exifFrame_templates', JSON.stringify(state.savedTemplates));
     }
 
     document.getElementById('templateName').value = '';
+    renderTemplateList();
     alert(`Template "${name}" saved!`);
+}
+
+export async function deleteTemplate(id, e) {
+    if (e) e.stopPropagation();
+    if (!confirm("Delete this template?")) return;
+
+    if (isElectron()) {
+        const result = await ipc.invoke('template-delete', id);
+        if (!result || !result.success) {
+            alert(`Failed to delete template: ${result?.error || 'Unknown error'}`);
+            return;
+        }
+    } else {
+        state.savedTemplates = state.savedTemplates.filter(t => t.id !== id);
+        localStorage.setItem('exifFrame_templates', JSON.stringify(state.savedTemplates));
+        renderTemplateList();
+        return;
+    }
+
+    state.savedTemplates = state.savedTemplates.filter(t => t.id !== id);
+    renderTemplateList();
+}
+
+export async function exportTemplate(id, e) {
+    if (e) e.stopPropagation();
+    const tpl = state.savedTemplates.find(t => t.id === id);
+    if (!tpl) return;
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tpl, null, 2));
+    const fileName = `template_${tpl.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.rzf`;
+
+    if (isElectron()) {
+        try {
+            await ipc.invoke('save-file-dialog', dataStr, fileName);
+        } catch (err) { }
+    } else {
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", fileName);
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+}
+
+export function importTemplates(inputElement) {
+    if (!inputElement.files || inputElement.files.length === 0) return;
+
+    const file = inputElement.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            // Handle both single template or array of templates
+            const templates = Array.isArray(data) ? data : [data];
+
+            const validTemplates = [];
+            for (const tpl of templates) {
+                if (tpl.id && tpl.name && tpl.config) {
+                    // Ensure unique ID
+                    validTemplates.push({
+                        id: Date.now() + Math.random(),
+                        name: tpl.name,
+                        config: tpl.config
+                    });
+                }
+            }
+
+            if (validTemplates.length > 0) {
+                if (isElectron()) {
+                    let addedCount = 0;
+                    for (const tpl of validTemplates) {
+                        try {
+                            const result = await ipc.invoke('template-save', tpl);
+                            if (result && result.success) {
+                                state.savedTemplates.push(tpl);
+                                addedCount++;
+                            }
+                        } catch (err) {
+                            console.error("Failed to save imported template:", err);
+                        }
+                    }
+                    if (addedCount === 0) {
+                        alert("Failed to import templates. Please check folder permissions.");
+                        inputElement.value = '';
+                        return;
+                    }
+                    renderTemplateList();
+                    alert(`Successfully imported ${addedCount} template(s)!`);
+                } else {
+                    state.savedTemplates.push(...validTemplates);
+                    localStorage.setItem('exifFrame_templates', JSON.stringify(state.savedTemplates));
+                    renderTemplateList();
+                    alert(`Successfully imported ${validTemplates.length} template(s)!`);
+                }
+            } else {
+                alert("Invalid template file format.");
+            }
+        } catch (err) {
+            console.error("Failed to parse template file:", err);
+            alert("Failed to read template file. It might be corrupted or not valid JSON.");
+        }
+        // Reset input so the same file can be imported again if needed
+        inputElement.value = '';
+    };
+
+    reader.readAsText(file);
 }

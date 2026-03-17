@@ -1,3 +1,9 @@
+/*
+[INPUT]  : lucide library imports
+[OUTPUT] : SVG Icon instances injected into DOM
+[POS]    : UI Asset Loader
+[DECISION]: Local fallback implementation instead of CDN to ensure 100% offline capability.
+*/
 // Lucide Icons Loader - Local Fallback
 // This script loads icons reliably without CDN dependency
 

@@ -166,6 +166,83 @@ export function setFont(v) {
     render();
 }
 
+export function renderTemplateList() {
+    const list = document.getElementById('templateList');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    if (!state.savedTemplates || state.savedTemplates.length === 0) {
+        list.innerHTML = `<div class="text-[10px] opacity-40 text-center py-6 italic font-medium" data-i18n="noSavedTpl">Empty</div>`;
+        return;
+    }
+
+    state.savedTemplates.forEach((tpl, index) => {
+        const div = document.createElement('div');
+        div.className = "group flex items-center justify-between p-2.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/5";
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = "flex-1 text-xs font-bold truncate pr-3 opacity-80 group-hover:opacity-100 transition";
+        nameDiv.innerText = tpl.name;
+        nameDiv.onclick = () => RZApp.loadTemplate(tpl.id);
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = "flex gap-1 opacity-0 group-hover:opacity-100 transition shrink-0";
+        
+        const delBtn = document.createElement('button');
+        delBtn.className = "w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500/10 transition";
+        delBtn.title = "Delete";
+        delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            RZApp.deleteTemplate(tpl.id);
+        };
+        
+        const exportBtn = document.createElement('button');
+        exportBtn.className = "w-7 h-7 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition";
+        exportBtn.title = "Export";
+        exportBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`;
+        exportBtn.onclick = (e) => {
+            e.stopPropagation();
+            RZApp.exportTemplate(tpl.id);
+        };
+        
+        actionsDiv.appendChild(exportBtn);
+        actionsDiv.appendChild(delBtn);
+        
+        div.appendChild(nameDiv);
+        div.appendChild(actionsDiv);
+        
+        list.appendChild(div);
+    });
+}
+
+export function loadTemplate(id) {
+    if (state.currentIndex === -1) return;
+    const tpl = state.savedTemplates.find(t => t.id === id);
+    if (!tpl) return;
+    
+    // Merge config
+    const currentConfig = state.images[state.currentIndex].config;
+    // Don't overwrite logo image if it already has one, or maybe just copy the primitive properties?
+    // Let's copy everything except the logo image object
+    const newConfig = JSON.parse(JSON.stringify(tpl.config));
+    newConfig.logo.img = currentConfig.logo.img; // keep current logo image
+    
+    state.images[state.currentIndex].config = newConfig;
+    
+    // Sync UI (this should be handled by a function in renderer.js, but since we are in TemplateManager, 
+    // we can either call a callback or just re-select current image.
+    // However, renderer.js is exposing RZApp. It means we could trigger RZApp.syncUIWithConfig?
+    // Or just re-trigger selectImage in renderer. 
+    // We'll dispatch a custom event or let renderer handle it.
+    
+    // Simplest way: RZApp.reselectCurrentImage()
+    if (window.RZApp && window.RZApp.reselectCurrentImage) {
+        window.RZApp.reselectCurrentImage();
+    }
+}
+
+
 export function setCustomFont(v) {
     if (state.currentIndex === -1) return;
     if (v) {

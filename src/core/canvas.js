@@ -67,37 +67,41 @@ function drawBackground(ctx, canvasW, canvasH, img, config) {
 
         if (!blurCache.canvas || blurCache.key !== cacheKey) {
             const c = document.createElement('canvas');
-            c.width = canvasW;
-            c.height = canvasH;
+            // Performance Boost: Downscale canvas for heavy blur operations
+            const downscale = 0.1;
+            const blurW = Math.ceil(canvasW * downscale);
+            const blurH = Math.ceil(canvasH * downscale);
+            c.width = blurW;
+            c.height = blurH;
             const ctxB = c.getContext('2d');
 
             const scale = 1.3;
-            const bw = canvasW * scale;
-            const bh = canvasH * scale;
 
-            ctxB.filter = `blur(60px) brightness(${config.bgBrightness})`;
+            // Adjust blur radius down proportionally
+            const scaledBlur = Math.max(2, Math.round(60 * downscale));
+            ctxB.filter = `blur(${scaledBlur}px) brightness(${config.bgBrightness})`;
 
             // Cover fit logic
             const imgRatio = img.width / img.height;
-            const canvasRatio = canvasW / canvasH;
+            const canvasRatio = blurW / blurH;
             let drawBgW, drawBgH, drawBgX, drawBgY;
 
             if (imgRatio > canvasRatio) {
-                drawBgH = canvasH * scale;
+                drawBgH = blurH * scale;
                 drawBgW = drawBgH * imgRatio;
             } else {
-                drawBgW = canvasW * scale;
+                drawBgW = blurW * scale;
                 drawBgH = drawBgW / imgRatio;
             }
-            drawBgX = (canvasW - drawBgW) / 2;
-            drawBgY = (canvasH - drawBgH) / 2;
+            drawBgX = (blurW - drawBgW) / 2;
+            drawBgY = (blurH - drawBgH) / 2;
 
             ctxB.drawImage(img, drawBgX, drawBgY, drawBgW, drawBgH);
 
             blurCache.canvas = c;
             blurCache.key = cacheKey;
         }
-        ctx.drawImage(blurCache.canvas, 0, 0);
+        ctx.drawImage(blurCache.canvas, 0, 0, canvasW, canvasH);
 
     } else {
         ctx.fillStyle = bgCol;
@@ -253,7 +257,16 @@ function drawInfoBar(ctx, layout, metaData, config, userEdit) {
 
 // --- MAIN SCHEDULER ---
 
+let renderTimer = null;
+
 export function render() {
+    if (renderTimer) cancelAnimationFrame(renderTimer);
+    renderTimer = requestAnimationFrame(() => {
+        actualRender();
+    });
+}
+
+function actualRender() {
     if (state.currentIndex === -1 || !canvas || !ctx) return;
 
     // MEMORY FIX: Use activeHighResImage from State

@@ -25,3 +25,27 @@ dist-ssr
 # Temp backups
 _BACKUP_ROOT/
 *.backup
+
+# Build and Release artifacts
+dist/
+RELEASES/
+*.exe
+*.zip
+*.dmg
+*.blockmap
+latest.yml
+
+# Packages
+node_modules/
+package-lock.json
+
+# Development scrap files
+*.txt
+*.bat
+*.py
+debug_lens.js
+metadata.json
+dist_build.log
+tsconfig.json
+vite.config.ts
+index.tsx

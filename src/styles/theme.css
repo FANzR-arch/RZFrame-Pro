@@ -42,6 +42,7 @@ body {
     background-image: var(--bg-gradient);
     margin: 0;
     padding: 0;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -65,8 +66,8 @@ html.dark #bg-layer {
     position: absolute;
     inset: 0;
     z-index: -1;
-    backdrop-filter: blur(60px);
     -webkit-backdrop-filter: blur(60px);
+    backdrop-filter: blur(60px);
     background: transparent;
     transition: backdrop-filter 1s;
 }
@@ -74,20 +75,45 @@ html.dark #bg-layer {
 .glass-panel {
     position: relative;
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: 24px;
+    -webkit-backdrop-filter: blur(40px) saturate(120%);
+    backdrop-filter: blur(40px) saturate(120%);
+    border-radius: 32px;
+    /* Apple-style large continuous feel */
     border: 1px solid var(--glass-border);
-    border-top: 1px solid var(--glass-border-highlight);
-    border-left: 1px solid var(--glass-border-highlight);
-    box-shadow: var(--shadow-offset) var(--shadow-offset) var(--shadow-blur) var(--shadow-color-main), calc(var(--shadow-offset) * -0.5) calc(var(--shadow-offset) * -0.5) var(--shadow-blur) var(--shadow-color-light), inset 1px 1px 2px var(--glass-border-highlight);
-    transition: all 0.3s ease;
+    /* Apple-style multi-layered shadow & crisp inner top highlight */
+    box-shadow:
+        0 24px 48px -12px var(--shadow-color-main),
+        0 12px 24px -6px var(--shadow-color-main),
+        0 4px 8px -2px var(--shadow-color-main),
+        inset 0 1px 1px 0 var(--glass-border-highlight),
+        inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 10;
 }
 
+/* Simulate the smooth tangency of a Squircle using an inner stroke */
+.glass-panel::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: 31px;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
+
+html.dark .glass-panel::before {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
 .glass-panel.interactive:hover {
-    transform: translateY(-2px);
-    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) calc(var(--shadow-blur) + 4px) var(--shadow-color-main), calc(var(--shadow-offset) * -0.5) calc(var(--shadow-offset) * -0.5) calc(var(--shadow-blur) + 4px) var(--shadow-color-light), inset 1px 1px 2px var(--glass-border-highlight);
+    transform: translateY(-2px) scale(1.01);
+    box-shadow:
+        0 32px 64px -16px var(--shadow-color-main),
+        0 16px 32px -8px var(--shadow-color-main),
+        0 6px 12px -3px var(--shadow-color-main),
+        inset 0 1px 1px 0 var(--glass-border-highlight),
+        inset 0 -1px 1.5px -1px rgba(0, 0, 0, 0.03);
 }
 
 .glass-input {
@@ -330,4 +356,85 @@ html.dark .win-ctrl-btn:hover {
 .win-ctrl-btn.close:hover {
     background-color: #ef4444;
     color: white;
+}
+
+/* === Full Screen Preview Mode === */
+body.preview-mode>header,
+body.preview-mode>div>aside,
+body.preview-mode>div>main>.h-40 {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    border-color: transparent !important;
+    overflow: hidden !important;
+}
+
+body.preview-mode>header {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+body.preview-mode>div>aside {
+    width: 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+body.preview-mode>div>main>.h-40 {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+body.preview-mode>div.flex-1 {
+    gap: 0 !important;
+    padding: 0 !important;
+}
+
+body.preview-mode>div>main {
+    gap: 0 !important;
+}
+
+/* Removed bg-layer and bg-blur overrides to preserve the original Gaussian blur style */
+
+body.preview-mode #mainCanvas {
+    cursor: zoom-out !important;
+    max-width: 95vw !important;
+    max-height: 95vh !important;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Animations for layout morphing */
+body>header,
+body>div>aside,
+body>div>main>.h-40,
+body>div.flex-1,
+body>div>main {
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        margin 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        padding 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        gap 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.4s ease !important;
+}
+
+#mainCanvas {
+    transition: max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.4s ease,
+        opacity 0.3s ease !important;
+}
+
+/* === Window Drag Areas === */
+.app-drag-region {
+    -webkit-app-region: drag;
+}
+
+.app-no-drag-region,
+input, button, select, textarea, .glass-input, .auto-scrollbar, .no-scrollbar {
+    -webkit-app-region: no-drag;
 }

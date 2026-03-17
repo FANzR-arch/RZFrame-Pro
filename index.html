@@ -1,12 +1,19 @@
+<!--
+[INPUT]  : renderer.js, assets/libs, main.css
+[OUTPUT] : Main Application Interface
+[POS]    : Application UI Root
+[DECISION]: Single-page architecture with TailwindCSS and Lucide icons for high performance and clean UI.
+-->
 <!DOCTYPE html>
 <html lang="zh-CN" class="antialiased">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RZFrame Workstation Pro</title>
+    <title>画外 (RZFrame) - 极简摄影边框工具</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Local TailwindCSS for faster startup -->
+    <script src="assets/libs/tailwind.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -24,9 +31,7 @@
         }
     </script>
 
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=Cinzel:wght@700&family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
-        rel="stylesheet">
+    <!-- Removed Google Fonts CDN, using system fonts -->
     <script src="assets/libs/lucide.js"></script>
     <script src="assets/libs/exif.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -47,14 +52,14 @@
     <div id="bg-blur"></div>
 
     <!-- Header -->
-    <header class="h-14 shrink-0 glass-panel flex items-center justify-between px-4 z-30 mt-4 mx-4 mb-0"
-        style="-webkit-app-region: drag;">
+    <header
+        class="h-14 shrink-0 glass-panel flex items-center justify-between px-4 z-30 mt-4 mx-4 mb-0 app-drag-region">
         <div class="flex items-center gap-4">
             <div
                 class="w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-black/20 border border-white/10 flex items-center justify-center bg-zinc-900">
                 <!-- LOGO 路径保持相对引用 -->
-                <img src="assets/ui/RZFrame.jpg" alt="Logo" class="w-full h-full object-cover"
-                    onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIi8+PGNpcmNsZSBjeD0iOC41IiBjeT0iOC41IiByPSIxLjUiLz48cG9seWxpbmUgcG9pbnRzPSIyMSAxNSAxNiAxMCA1IDIxIi8+PC9zdmc+'">
+                <img src="assets/icon.ico" alt="Logo" class="w-full h-full object-cover"
+                    onerror="if(this.dataset.fallback!=='1'){this.dataset.fallback='1';this.src='assets/ui/RZFrame.jpg';}else{this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIi8+PGNpcmNsZSBjeD0iOC41IiBjeT0iOC41IiByPSIxLjUiLz48cG9seWxpbmUgcG9pbnRzPSIyMSAxNSAxNiAxMCA1IDIxIi8+PC9zdmc+';}">
             </div>
             <div>
                 <h1 class="font-bold text-base tracking-tight flex items-center gap-2">RZFrame <span
@@ -65,7 +70,15 @@
         </div>
 
         <!-- Right Controls -->
-        <div class="flex items-center gap-3" style="-webkit-app-region: no-drag;">
+        <div class="flex items-center gap-3 app-no-drag-region">
+            <!-- XHS Invite Button -->
+            <button onclick="RZApp.showXHSPrompt()"
+                class="w-8 h-8 rounded-full hover:bg-red-500/10 text-red-500 flex items-center justify-center transition group border border-transparent hover:border-red-500/20"
+                title="Xiaohongshu Group">
+                <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+            </button>
+            <div class="h-6 w-px bg-current opacity-10"></div>
+
             <button onclick="RZApp.resetAll()"
                 class="w-8 h-8 rounded-full hover:bg-red-500/10 text-zinc-500 hover:text-red-500 flex items-center justify-center transition group border border-transparent hover:border-red-500/20"
                 title="Reset">
@@ -81,7 +94,7 @@
             <div class="h-6 w-px bg-current opacity-10"></div>
             <button onclick="RZApp.toggleTheme()"
                 class="w-9 h-9 rounded-xl glass-input flex items-center justify-center transition hover:scale-105 active:scale-95"
-                id="themeBtn">
+                id="themeBtn" title="Toggle Theme">
                 <i data-lucide="moon" class="w-4 h-4"></i>
             </button>
 
@@ -154,7 +167,8 @@
                         </button>
                     </div>
                     <select id="ratioSelector" onchange="RZApp.setAspectRatio(this.value)"
-                        class="glass-input w-full p-2.5 text-xs mb-3 appearance-none cursor-pointer font-bold">
+                        class="glass-input w-full p-2.5 text-xs mb-3 appearance-none cursor-pointer font-bold"
+                        title="Canvas Ratio">
                         <option value="original" data-i18n="ratioOriginal">Original + Border</option>
                         <option value="1:1">1:1 (Square)</option>
                         <option value="4:5">4:5 (Portrait/Social)</option>
@@ -171,7 +185,7 @@
                                 data-i18n="imgZoom">Image Zoom</span> <span id="imgScaleVal"
                                 class="font-mono">100%</span></div>
                         <input type="range" id="imgScaleInput" min="10" max="250" value="100" class="dotted-slider"
-                            oninput="RZApp.updateImageScale(this.value)">
+                            oninput="RZApp.updateImageScale(this.value)" title="Image Zoom">
                         <div class="text-[9px] opacity-40 text-center pt-1" data-i18n="dragTip">Tip: Drag image to pan
                         </div>
                     </div>
@@ -195,21 +209,23 @@
                                     data-i18n="fontScale">Font Size</span> <span id="fontScaleVal"
                                     class="font-mono">1.0x</span></div>
                             <input type="range" id="fontScaleInput" min="0.5" max="2.0" step="0.1" value="1.0"
-                                class="dotted-slider" oninput="RZApp.updateConfig('fontScale', this.value)">
+                                class="dotted-slider" oninput="RZApp.updateConfig('fontScale', this.value)"
+                                title="Font Size">
                         </div>
                         <div id="borderControl">
                             <div class="flex justify-between text-xs opacity-70 mb-2 font-bold"><span
                                     data-i18n="borderScale">Border Width</span> <span id="borderScaleVal"
                                     class="font-mono">1.0x</span></div>
                             <input type="range" id="borderScaleInput" min="0" max="3.0" step="0.1" value="1.0"
-                                class="dotted-slider" oninput="RZApp.updateConfig('borderScale', this.value)">
+                                class="dotted-slider" oninput="RZApp.updateConfig('borderScale', this.value)"
+                                title="Border Width">
                         </div>
                         <div id="radiusControl" class="hidden">
                             <div class="flex justify-between text-xs opacity-70 mb-2 font-bold"><span
                                     data-i18n="radius">Radius</span> <span id="radiusVal" class="font-mono">30px</span>
                             </div>
                             <input type="range" id="radiusInput" min="0" max="100" value="30" class="dotted-slider"
-                                oninput="RZApp.updateConfig('radius', this.value)">
+                                oninput="RZApp.updateConfig('radius', this.value)" title="Radius">
                         </div>
                         <!-- NEW: BG Brightness for Float Mode -->
                         <div id="bgBrightnessControl" class="hidden">
@@ -217,7 +233,8 @@
                                     data-i18n="bgBrightness">BG Brightness</span> <span id="bgBrightnessVal"
                                     class="font-mono">0.6</span></div>
                             <input type="range" id="bgBrightnessInput" min="0.2" max="1.5" step="0.05" value="0.6"
-                                class="dotted-slider" oninput="RZApp.updateConfig('bgBrightness', this.value)">
+                                class="dotted-slider" oninput="RZApp.updateConfig('bgBrightness', this.value)"
+                                title="Background Brightness">
                         </div>
                     </div>
 
@@ -226,9 +243,11 @@
                             <span class="text-xs font-bold opacity-80" data-i18n="frameBg">Frame Color</span>
                             <div class="flex gap-2 glass-input p-1">
                                 <button onclick="RZApp.updateConfig('frameColor', 'white')"
-                                    class="w-6 h-6 rounded bg-white border border-zinc-200 shadow-sm hover:scale-110 transition"></button>
+                                    class="w-6 h-6 rounded bg-white border border-zinc-200 shadow-sm hover:scale-110 transition"
+                                    title="White Frame"></button>
                                 <button onclick="RZApp.updateConfig('frameColor', 'black')"
-                                    class="w-6 h-6 rounded bg-black border border-zinc-600 shadow-sm hover:scale-110 transition"></button>
+                                    class="w-6 h-6 rounded bg-black border border-zinc-600 shadow-sm hover:scale-110 transition"
+                                    title="Black Frame"></button>
                             </div>
                         </div>
                         <div class="flex items-center justify-between" id="fontColorGroup">
@@ -247,7 +266,7 @@
                                     title="Custom Color">
                                     <input type="color" id="fontColorPicker"
                                         class="absolute -top-2 -left-2 w-10 h-10 p-0 border-0 cursor-pointer"
-                                        oninput="RZApp.updateConfig('fontColor', this.value)">
+                                        oninput="RZApp.updateConfig('fontColor', this.value)" title="Font Color">
                                 </div>
                             </div>
                         </div>
@@ -266,7 +285,8 @@
                         </button>
                     </div>
                     <select id="fontSelector" onchange="RZApp.setFont(this.value)"
-                        class="glass-input w-full p-3 text-xs mb-2 appearance-none cursor-pointer font-bold">
+                        class="glass-input w-full p-3 text-xs mb-2 appearance-none cursor-pointer font-bold"
+                        title="Typography">
                         <option value="Inter" data-i18n="fontDefault">Default (Inter)</option>
                         <option value="Noto Serif SC" data-i18n="fontSerif">Serif (Song)</option>
                         <option value="Roboto Mono" data-i18n="fontMono">Mono (Code)</option>
@@ -291,32 +311,60 @@
                                     <div onclick="RZApp.toggleBrandMode('image')" id="modeImgBtn" class="seg-btn"
                                         data-i18n="btnLogo">Logo</div>
                                 </div>
-                                <input type="text" id="inp-make" class="glass-input w-full p-2 text-xs">
+                                <input type="text" id="inp-make" class="glass-input w-full p-2 text-xs" title="Brand"
+                                    placeholder="Brand">
                                 <div id="brandLogoControls"
                                     class="hidden bg-black/5 dark:bg-white/5 rounded-xl p-3 border border-black/5 dark:border-white/5 space-y-3">
                                     <div class="flex gap-3 items-center">
-                                        <div class="w-12 h-12 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNjY2MiLz48cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZWVlIi8+PHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2VlZSIvPjwvc3ZnPg==')] rounded-lg border border-black/10 flex items-center justify-center cursor-pointer hover:opacity-80 transition overflow-hidden shrink-0 shadow-inner"
-                                            onclick="document.getElementById('logoInput').click()">
-                                            <img id="logoPreview" src=""
-                                                class="w-full h-full object-contain p-1 hidden">
-                                            <i data-lucide="upload" class="w-5 h-5 text-zinc-500"
-                                                id="logoPlaceholderIcon"></i>
+                                        <!-- Logo Preview Box with Cycle Button -->
+                                        <div class="relative group flex items-center gap-2">
+                                            <!-- Cycle Button (Left Side) -->
+                                            <button id="btn-cycle-logo" onclick="RZApp.cycleLogo()"
+                                                class="hidden w-6 h-6 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 flex items-center justify-center transition text-black/70 dark:text-white/70"
+                                                title="Cycle Logo Variant">
+                                                <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                                            </button>
+
+                                            <div class="w-12 h-12 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNjY2MiLz48cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZWVlIi8+PHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2VlZSIvPjwvc3ZnPg==')] rounded-lg border border-black/10 flex items-center justify-center cursor-pointer hover:opacity-80 transition overflow-hidden shrink-0 shadow-inner"
+                                                onclick="document.getElementById('logoInput').click()">
+                                                <img id="logoPreview" src="" alt="Logo Preview"
+                                                    class="w-full h-full object-contain p-1 hidden">
+                                                <i data-lucide="upload" class="w-5 h-5 text-zinc-500"
+                                                    id="logoPlaceholderIcon"></i>
+                                            </div>
                                         </div>
+
                                         <div class="flex-1 flex flex-col gap-2">
                                             <div class="flex items-center justify-between gap-2">
                                                 <input type="range" id="logoScaleInput" min="10" max="300" value="100"
                                                     class="dotted-slider flex-1"
-                                                    oninput="RZApp.updateLogoScale(this.value)">
+                                                    oninput="RZApp.updateLogoScale(this.value)" title="Logo Scale">
                                                 <span id="scaleVal"
                                                     class="text-[10px] font-mono font-bold opacity-60 w-8 text-right">100%</span>
                                             </div>
+                                            <!-- Control Buttons -->
                                             <div class="flex gap-2">
                                                 <button onclick="RZApp.toggleLogoInvert()"
                                                     class="text-[10px] font-bold flex-1 py-1 rounded bg-white/50 dark:bg-white/10 border border-black/5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition text-center"
                                                     id="invertBtn" data-i18n="invert">Invert</button>
                                                 <button onclick="RZApp.resetLogoUI()"
-                                                    class="text-[10px] px-2 py-1 rounded bg-white/50 dark:bg-white/10 border border-black/5 hover:text-red-500 transition"><i
-                                                        data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i></button>
+                                                    class="text-[10px] px-2 py-1 rounded bg-white/50 dark:bg-white/10 border border-black/5 hover:text-red-500 transition"
+                                                    title="Reset Logo UI"><i data-lucide="rotate-ccw"
+                                                        class="w-3.5 h-3.5"></i></button>
+                                            </div>
+                                            <div class="hidden flex gap-2 w-full mt-2">
+                                                <button onclick="document.getElementById('logoInput').click()"
+                                                    class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md py-1.5 flex items-center justify-center gap-2 transition text-xs"
+                                                    title="Upload Custom Logo">
+                                                    <i data-lucide="upload" class="w-3 h-3 opacity-70"></i>
+                                                    <span data-i18n="upload">Upload</span>
+                                                </button>
+                                                <button onclick="RZApp.importLogoFolder()"
+                                                    class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md py-1.5 flex items-center justify-center gap-2 transition text-xs"
+                                                    title="Import Logo Folder">
+                                                    <i data-lucide="folder-plus" class="w-3 h-3 opacity-70"></i>
+                                                    <span data-i18n="import">Import</span>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -325,27 +373,28 @@
                         </div>
                         <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label"
                                 data-i18n="labelModel">Model</label><input type="text" id="inp-model"
-                                class="glass-input w-full p-2 text-xs"></div>
+                                class="glass-input w-full p-2 text-xs" title="Model" placeholder="Model"></div>
                         <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label"
                                 data-i18n="labelLens">Lens</label><input type="text" id="inp-lens"
-                                class="glass-input w-full p-2 text-xs"></div>
+                                class="glass-input w-full p-2 text-xs" title="Lens" placeholder="Lens"></div>
                         <div class="grid grid-cols-2 gap-x-3 gap-y-3.5">
                             <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label"
                                     data-i18n="labelFocal">Focal</label><input type="text" id="inp-focal"
-                                    class="glass-input w-full p-2 text-xs"></div>
+                                    class="glass-input w-full p-2 text-xs" title="Focal" placeholder="Focal"></div>
                             <div class="grid grid-cols-[40px_1fr] items-center gap-3"><label class="input-label"
                                     data-i18n="labelAperture">Ap</label><input type="text" id="inp-aperture"
-                                    class="glass-input w-full p-2 text-xs"></div>
+                                    class="glass-input w-full p-2 text-xs" title="Aperture" placeholder="Aperture">
+                            </div>
                             <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label"
                                     data-i18n="labelShutter">Time</label><input type="text" id="inp-shutter"
-                                    class="glass-input w-full p-2 text-xs"></div>
+                                    class="glass-input w-full p-2 text-xs" title="Shutter" placeholder="Shutter"></div>
                             <div class="grid grid-cols-[40px_1fr] items-center gap-3"><label class="input-label"
                                     data-i18n="labelISO">ISO</label><input type="text" id="inp-iso"
-                                    class="glass-input w-full p-2 text-xs"></div>
+                                    class="glass-input w-full p-2 text-xs" title="ISO" placeholder="ISO"></div>
                         </div>
                         <div class="grid grid-cols-[60px_1fr] items-center gap-3"><label class="input-label"
                                 data-i18n="labelDate">Date</label><input type="text" id="inp-date"
-                                class="glass-input w-full p-2 text-xs"></div>
+                                class="glass-input w-full p-2 text-xs" title="Date" placeholder="Date"></div>
                     </div>
                 </section>
             </div>
@@ -353,12 +402,12 @@
 
         <!-- Main Content Area -->
         <main class="flex-1 flex flex-col gap-6 relative min-w-0 h-full">
-            <div class="flex-1 flex items-center justify-center relative z-10 overflow-hidden">
+            <div class="flex-1 flex items-center justify-center relative z-10 overflow-hidden group">
                 <div id="emptyState"
-                    class="glass-panel p-16 flex flex-col items-center justify-center cursor-pointer hover:bg-white/30 dark:hover:bg-black/20 transition group border-2 border-dashed border-black/10 dark:border-white/10 interactive"
+                    class="glass-panel p-16 flex flex-col items-center justify-center cursor-pointer hover:bg-white/30 dark:hover:bg-black/20 transition group-hover:border-black/20 dark:group-hover:border-white/20 border-2 border-dashed border-black/10 dark:border-white/10 interactive"
                     onclick="document.getElementById('fileInput').click()">
                     <div
-                        class="w-24 h-24 rounded-3xl bg-black/5 dark:bg-white/5 flex items-center justify-center mb-6 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 transition group-hover:scale-110 duration-300 shadow-inner">
+                        class="w-24 h-24 rounded-3xl bg-black/5 dark:bg-white/5 flex items-center justify-center mb-6 text-zinc-400 transition transform hover:scale-110 duration-300 shadow-inner">
                         <i data-lucide="image-plus" class="w-12 h-12"></i>
                     </div>
                     <span class="text-base font-black opacity-60 tracking-[0.2em]" data-i18n="clickToUpload">DROP IMAGE
@@ -366,6 +415,18 @@
                 </div>
                 <canvas id="mainCanvas"
                     class="max-w-full max-h-full shadow-2xl hidden cursor-move object-contain rounded-sm transition-opacity duration-300"></canvas>
+
+                <!-- Navigation Arrows -->
+                <button id="prevImgBtn"
+                    class="hidden absolute left-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center rounded-full glass-panel opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white/20 active:scale-95"
+                    onclick="RZApp.prevImage(event)" title="Previous Image">
+                    <i data-lucide="chevron-left" class="w-6 h-6 opacity-70"></i>
+                </button>
+                <button id="nextImgBtn"
+                    class="hidden absolute right-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center rounded-full glass-panel opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white/20 active:scale-95"
+                    onclick="RZApp.nextImage(event)" title="Next Image">
+                    <i data-lucide="chevron-right" class="w-6 h-6 opacity-70"></i>
+                </button>
             </div>
 
             <!-- Bottom Filmstrip -->
@@ -382,7 +443,8 @@
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                         <button onclick="document.getElementById('fileInput').click()"
-                            class="text-[10px] font-bold opacity-70 hover:opacity-100 transition flex items-center justify-center w-8 h-8 rounded-lg bg-black/5 dark:bg-white/10 border border-black/5 hover:bg-black/10 shadow-sm">
+                            class="text-[10px] font-bold opacity-70 hover:opacity-100 transition flex items-center justify-center w-8 h-8 rounded-lg bg-black/5 dark:bg-white/10 border border-black/5 hover:bg-black/10 shadow-sm"
+                            title="Add File">
                             <i data-lucide="plus" class="w-4 h-4"></i>
                         </button>
                     </div>
@@ -479,16 +541,17 @@
                         <i data-lucide="layout-template" class="w-4 h-4"></i> LIBRARY
                     </h3>
                     <button onclick="document.getElementById('importTplInput').click()"
-                        class="text-[10px] flex items-center gap-1 opacity-50 hover:opacity-100 hover:text-blue-500 transition">
+                        class="text-[10px] flex items-center gap-1 opacity-50 hover:opacity-100 hover:text-blue-500 transition app-no-drag-region">
                         <i data-lucide="import" class="w-3 h-3"></i> Import
                     </button>
                 </div>
-                <div class="space-y-3 flex-1 flex flex-col min-h-0">
+                <div class="space-y-3 flex-1 flex flex-col min-h-0 app-no-drag-region">
                     <div class="flex gap-2 shrink-0">
                         <input type="text" id="templateName" class="glass-input flex-1 p-2.5 text-xs pr-2"
-                            placeholder="Template Name...">
+                            placeholder="Template Name..." title="Template Name">
                         <button onclick="RZApp.saveCurrentTemplate()"
-                            class="bg-zinc-800 dark:bg-white text-white dark:text-black px-3.5 py-2 rounded-xl text-xs font-bold hover:opacity-80 transition shadow-md active:scale-95">
+                            class="bg-zinc-800 dark:bg-white text-white dark:text-black px-3.5 py-2 rounded-xl text-xs font-bold hover:opacity-80 transition shadow-md active:scale-95"
+                            title="Save Template">
                             <i data-lucide="save" class="w-4 h-4"></i>
                         </button>
                     </div>
@@ -500,7 +563,7 @@
             </div>
 
             <!-- Export Panel -->
-            <div class="glass-panel p-5 shrink-0">
+            <div class="glass-panel p-5 shrink-0 app-no-drag-region">
                 <h3 class="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] border-b border-black/5 dark:border-white/5 pb-2 mb-4 flex items-center gap-2"
                     data-i18n="exportSettings">
                     <i data-lucide="hard-drive" class="w-4 h-4"></i> EXPORT
@@ -508,7 +571,8 @@
                 <div class="space-y-3">
                     <div class="relative">
                         <input type="text" id="exportFilename"
-                            class="glass-input w-full p-3 text-xs pr-12 font-bold tracking-wide" placeholder="Filename">
+                            class="glass-input w-full p-3 text-xs pr-12 font-bold tracking-wide" placeholder="Filename"
+                            title="Export Filename">
                         <span class="absolute right-4 top-3 text-[10px] opacity-40 font-black">.JPG</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
@@ -526,9 +590,51 @@
         </aside>
     </div>
 
-    <input type="file" id="fileInput" accept="image/*" multiple>
-    <input type="file" id="logoInput" accept="image/png, image/jpeg, image/svg+xml">
-    <input type="file" id="importTplInput" accept=".json,.rzf" class="hidden" onchange="RZApp.importTemplates(this)">
+    <input type="file" id="fileInput" accept="image/*" multiple title="File Input">
+    <input type="file" id="logoInput" accept="image/png, image/jpeg, image/svg+xml" title="Logo Input">
+    <input type="file" id="importTplInput" accept=".json,.rzf" class="hidden" onchange="RZApp.importTemplates(this)"
+        title="Import Template Input">
+
+    <!-- XHS Invite Modal -->
+    <div id="xhsModal"
+        class="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md hidden transition-opacity duration-300 opacity-0 px-4">
+        <div class="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden w-full max-w-[680px] border border-black/10 dark:border-white/10 transform transition-transform scale-95 opacity-0 flex max-h-[85vh]"
+            id="xhsModalContent">
+
+            <!-- Left Side: Image Area -->
+            <div class="relative w-[45%] shrink-0 bg-zinc-900 flex">
+                <img src="assets/xiaohongshu_qr.jpg" alt="Xiaohongshu Group Invite"
+                    class="w-full h-auto object-cover object-top block" />
+            </div>
+
+            <!-- Right Side: Content Area -->
+            <div
+                class="w-[55%] p-8 text-center flex flex-col items-center justify-center relative bg-white dark:bg-zinc-900">
+                <!-- Close Button -->
+                <button onclick="RZApp.hideXHSPrompt()"
+                    class="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition z-10"
+                    title="Close">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+
+                <div class="flex flex-col items-center justify-center flex-1 w-full gap-5">
+                    <div class="flex-1 flex flex-col justify-center">
+                        <h2 class="text-2xl font-black text-zinc-800 dark:text-zinc-100 mb-4 tracking-tight">欢迎进入共创群
+                        </h2>
+                        <div class="w-10 h-1 bg-red-500 rounded-full mx-auto mb-5"></div>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
+                            RZFrame 由独立开发者用爱发电。<br><br>遇到 Bug 闪退？<br>或者想许愿新模板？<br>左侧扫码加粉，直接提需求！
+                        </p>
+                    </div>
+
+                    <button onclick="RZApp.hideXHSPrompt()"
+                        class="w-full py-3.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition shadow-lg shadow-red-500/20 active:scale-95">
+                        我知道了
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="renderer.js"></script>
 </body>

@@ -15,12 +15,14 @@ let dragTarget = null;
 let dragStartPos = { x: 0, y: 0 };
 let dragStartLayout = { x: 0, y: 0 };
 let dragStartOffset = { x: 0, y: 0 };
+let hasDragged = false;
 
 export function setupCanvasListeners() {
     const canvas = getCanvas();
     if (!canvas) return;
 
     canvas.addEventListener('mousedown', (e) => {
+        hasDragged = false;
         if (state.currentIndex === -1) return;
         const config = state.images[state.currentIndex].config;
         const rect = canvas.getBoundingClientRect();
@@ -53,6 +55,7 @@ export function setupCanvasListeners() {
 
     window.addEventListener('mousemove', (e) => {
         if (!isDragging || state.currentIndex === -1) return;
+        hasDragged = true;
         const config = state.images[state.currentIndex].config;
         const rect = canvas.getBoundingClientRect();
         const w = canvas.width; const h = canvas.height;
@@ -89,6 +92,13 @@ export function setupCanvasListeners() {
                 else if (Math.abs(t.x - 0.5) < 0.1) { t.align = 'center'; }
             }
             isDragging = false; dragTarget = null; render();
+        }
+    });
+
+    canvas.addEventListener('click', (e) => {
+        // Prevent toggling if the user was just dragging
+        if (!hasDragged && state.currentIndex !== -1) {
+            document.body.classList.toggle('preview-mode');
         }
     });
 }

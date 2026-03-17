@@ -18,12 +18,18 @@ import * as TemplateManager from './src/core/template-manager.js';
 import * as ExportManager from './src/core/export-manager.js';
 import * as LogoManager from './src/ui/logo-manager.js';
 
+// Expose Managers Globally for cross-module access if needed (e.g. from file-manager)
+window.LogoManager = LogoManager;
+window.ExportManager = ExportManager;
+
 // === NAMESPACE EXPOSURE ===
 const RZApp = {
     toggleTheme: () => toggleTheme(),
     resetAll: () => resetAll(),
     setLanguage: (l) => setLanguage(l),
     handleWindowControl: (a) => handleWindowControl(a),
+    showXHSPrompt: () => showXHSPrompt(), // NEW
+    hideXHSPrompt: () => hideXHSPrompt(), // NEW
 
     // Delegated to TemplateManager
     setTemplate: (t) => TemplateManager.setTemplate(t),
@@ -41,12 +47,14 @@ const RZApp = {
     toggleLogoInvert: () => LogoManager.toggleLogoInvert(),
     resetLogoUI: () => LogoManager.resetLogoUI(),
     handleLogoUpload: (e) => LogoManager.handleLogoUpload(e),
+    cycleLogo: () => LogoManager.cycleLogo(), // NEW
+    importLogoFolder: () => LogoManager.importLogoFolder(), // NEW
 
     // Delegated to ExportManager
     saveCurrentTemplate: () => ExportManager.saveCurrentTemplate(),
     downloadImage: () => ExportManager.downloadImage(),
     batchSave: () => ExportManager.batchSave(selectImage),
-    exportTemplate: (id, e) => ExportManager.exportTemplate && ExportManager.exportTemplate(id, e), // Note: Need to check if these were exported
+    exportTemplate: (id, e) => ExportManager.exportTemplate && ExportManager.exportTemplate(id, e),
     deleteTemplate: (id, e) => ExportManager.deleteTemplate && ExportManager.deleteTemplate(id, e),
     importTemplates: (i) => ExportManager.importTemplates && ExportManager.importTemplates(i),
 
@@ -56,6 +64,12 @@ const RZApp = {
     // Local Orchestration
     loadSystemFonts: () => loadSystemFonts(),
     clearFilmstrip: () => clearFilmstrip(),
+    reselectCurrentImage: () => selectImage(state.currentIndex), // For refreshing UI after template load
+    nextImage: (e) => nextImage(e),
+    prevImage: (e) => prevImage(e),
+
+    // Delegated back to TemplateManager from renderer for backwards/dependency reasons
+    loadTemplate: (id) => TemplateManager.loadTemplate(id),
 };
 
 window.RZApp = RZApp;
@@ -64,13 +78,42 @@ window.RZApp = RZApp;
 
 let isInitialized = false;
 
-function init() {
+async function loadSavedTemplates() {
+    if (isElectron()) {
+        try {
+            const templates = await ipc.invoke('template-list');
+            if (Array.isArray(templates)) {
+                state.savedTemplates = templates.filter(t => t && t.id && t.name && t.config);
+                return;
+            }
+            console.warn("Template list IPC returned invalid data, falling back to empty list.");
+        } catch (err) {
+            console.error("Failed to load templates from disk:", err);
+        }
+        state.savedTemplates = [];
+        return;
+    }
+
+    const savedTpls = localStorage.getItem('exifFrame_templates');
+    if (savedTpls) {
+        try {
+            state.savedTemplates = JSON.parse(savedTpls);
+        } catch (e) {
+            console.error(e);
+            state.savedTemplates = [];
+        }
+    } else {
+        state.savedTemplates = [];
+    }
+}
+
+async function init() {
     if (isInitialized) return;
 
     if (isElectron()) {
         ipc.invoke('get-logos-path').then(path => {
             if (path) FileManager.setLogosPath(path.replace(/\\/g, '/'));
-            console.log("Logos path configured");
+
         });
     }
 
@@ -84,17 +127,8 @@ function init() {
 
     isInitialized = true;
 
-    // Load templates (Delegated/Orchestrated check)
-    // Note: TemplateManager.initTemplates logic can be called here if needed, 
-    // but originally it was separate. Let's move it to TemplateManager if not already.
-    // For now we assume state.savedTemplates is managed or loaded.
-    const savedTpls = localStorage.getItem('exifFrame_templates');
-    if (savedTpls) {
-        try { state.savedTemplates = JSON.parse(savedTpls); } catch (e) { console.error(e); }
-    }
-    // TODO: TemplateManager.renderTemplateList() ?? 
-    // We need to sync the list rendering. 
-    // Ideally TemplateManager handles the list UI too.
+    await loadSavedTemplates();
+    TemplateManager.renderTemplateList();
 
     TemplateManager.setTemplate('classic');
     setLanguage('en');
@@ -113,7 +147,7 @@ function init() {
         requestAnimationFrame(() => {
             if (window.lucide) {
                 window.lucide.createIcons();
-                console.log("Icons initialized");
+
             } else {
                 console.warn("Lucide library not found");
             }
@@ -121,7 +155,7 @@ function init() {
     });
 
     setupCanvasListeners();
-    console.log("RZFrame Initialized (Refactored)");
+
 
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
@@ -173,6 +207,22 @@ async function selectImage(idx) {
 
         // Sync Meta
         syncMetaDisplay(d);
+
+        // Auto match logo if not already set or if explicitly requested
+        // Using a flag or just checking if logo is set? 
+        // For now, let's trigger it if the user hasn't manually set a logo image yet
+        // OR better: Always trigger on select? No, that overwrites manual changes.
+        // Trigger ONLY if it's the first load (we don't have a "first load" flag here easily without state)
+        // Check `d.autoLogoApplied`:
+        if (!d.autoLogoApplied && d.exif && d.exif.Make) {
+            LogoManager.autoMatchLogo(d.exif);
+            d.autoLogoApplied = true; // Flag to prevent overwriting user changes on re-select
+        } else if (d.config.logo.useImage && d.config.logo.img) {
+            // Restore existing image to UI preview
+            document.getElementById('logoPreview').src = d.config.logo.img.src;
+            document.getElementById('logoPreview').classList.remove('hidden');
+            document.getElementById('logoPlaceholderIcon').classList.add('hidden');
+        }
 
         updateFilmstrip();
         render();
@@ -271,6 +321,17 @@ function updateFilmstrip() {
     s.innerHTML = '';
     document.getElementById('imgCount').innerText = state.images.length;
 
+    // Show or hide navigation arrows
+    const prevBtn = document.getElementById('prevImgBtn');
+    const nextBtn = document.getElementById('nextImgBtn');
+    if (state.images.length > 1) {
+        if (prevBtn) prevBtn.classList.remove('hidden');
+        if (nextBtn) nextBtn.classList.remove('hidden');
+    } else {
+        if (prevBtn) prevBtn.classList.add('hidden');
+        if (nextBtn) nextBtn.classList.add('hidden');
+    }
+
     state.images.forEach((d, i) => {
         const div = document.createElement('div');
         const sel = i === state.currentIndex;
@@ -298,6 +359,22 @@ function deleteImage(index, event) {
     state.images.splice(index, 1);
     if (state.images.length === 0) { state.currentIndex = -1; clearPhotosUI(); }
     else { if (state.currentIndex >= index) { state.currentIndex = Math.max(0, state.currentIndex - 1); } selectImage(state.currentIndex); }
+}
+
+function nextImage(e) {
+    if (e) e.stopPropagation();
+    if (state.images.length === 0) return;
+    let nextIdx = state.currentIndex + 1;
+    if (nextIdx >= state.images.length) nextIdx = 0;
+    selectImage(nextIdx);
+}
+
+function prevImage(e) {
+    if (e) e.stopPropagation();
+    if (state.images.length === 0) return;
+    let prevIdx = state.currentIndex - 1;
+    if (prevIdx < 0) prevIdx = state.images.length - 1;
+    selectImage(prevIdx);
 }
 
 function clearFilmstrip() {
@@ -375,6 +452,33 @@ function toggleTheme() {
 }
 function updateThemeIcon() { document.getElementById('themeBtn').innerHTML = state.theme === 'dark' ? '<i data-lucide="sun" class="w-4 h-4"></i>' : '<i data-lucide="moon" class="w-4 h-4"></i>'; refreshIcons(); }
 function refreshIcons() { if (window.lucide) window.lucide.createIcons(); }
+
+// --- XHS Modal Control ---
+function showXHSPrompt() {
+    const modal = document.getElementById('xhsModal');
+    const content = document.getElementById('xhsModalContent');
+    if (modal && content) {
+        modal.classList.remove('hidden');
+        // trigger reflow
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0');
+        content.classList.remove('opacity-0', 'scale-95');
+        content.classList.add('scale-100');
+    }
+}
+
+function hideXHSPrompt() {
+    const modal = document.getElementById('xhsModal');
+    const content = document.getElementById('xhsModalContent');
+    if (modal && content) {
+        modal.classList.add('opacity-0');
+        content.classList.remove('scale-100');
+        content.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300); // match transition duration
+    }
+}
 
 async function loadSystemFonts() {
     if (!isElectron()) return;

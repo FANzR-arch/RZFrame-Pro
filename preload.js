@@ -18,14 +18,26 @@ contextBridge.exposeInMainWorld('api', {
   },
   // 调用主进程方法并等待结果
   invoke: (channel, data, ...args) => {
-    let validChannels = ['query-local-fonts', 'select-folder-dialog', 'save-file-direct', 'save-file-dialog', 'template-list', 'template-save', 'template-delete', 'analyze-exif'];
+    let validChannels = [
+      'query-local-fonts',
+      'select-folder-dialog',
+      'save-file-direct',
+      'save-file-dialog',
+      'template-list',
+      'template-save',
+      'template-delete',
+      'analyze-exif',
+      'find-brand-logos', // Added
+      'import-logo-folder', // Added
+      'get-logos-path' // Added
+    ];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, data, ...args);
     }
   },
   // 监听主进程发来的消息 (如果需要)
   on: (channel, func) => {
-    let validChannels = [];
+    let validChannels = ['logo-debug-info']; // Added debug channel
     if (validChannels.includes(channel)) {
       // Strip event as it includes sender
       ipcRenderer.on(channel, (event, ...args) => func(...args));
